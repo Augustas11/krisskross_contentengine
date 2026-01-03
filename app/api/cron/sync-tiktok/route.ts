@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { fetchTikTokVideos, TikTokVideoData } from "@/lib/tiktok";
+import { generateInsights } from "@/lib/services/insightGenerator";
 
 export const maxDuration = 300; // 5 minutes for Pro plan, adjust as needed
 
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
                         // Create new video entry from TikTok data
                         const newVideo = await prisma.video.create({
                             data: {
-                                userId: account.userId,
+                                user: { connect: { id: account.userId } },
                                 tiktokVideoId: videoData.id,
                                 tiktokUrl: `https://www.tiktok.com/@${account.user.name}/video/${videoData.id}`, // Approximate URL
                                 filename: videoData.title || `tiktok_${videoData.id}`,
@@ -90,7 +91,11 @@ export async function GET(request: Request) {
             }
         }
 
-        return NextResponse.json({ success: true, results });
+        // 5. Trigger Insight Generation
+        console.log("Sync complete. Generating insights...");
+        const insightResults = await generateInsights();
+
+        return NextResponse.json({ success: true, results, insightResults });
 
     } catch (error) {
         console.error("Sync Cron Error:", error);

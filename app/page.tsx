@@ -34,7 +34,9 @@ export default async function Home() {
     videoCount,
     metricStats,
     videosMissingTags,
-    recentVideos
+    recentVideos,
+    activeInsights,
+    bestPractices
   ] = await Promise.all([
     prisma.video.count(),
     prisma.tikTokMetric.aggregate({
@@ -52,6 +54,15 @@ export default async function Home() {
     prisma.video.findMany({
       take: 3,
       orderBy: { createdAt: 'desc' }
+    }),
+    prisma.insight.findMany({
+      where: { status: 'active' },
+      orderBy: { confidenceScore: 'desc' },
+      take: 3
+    }),
+    prisma.bestPractice.findMany({
+      orderBy: { performanceAvg: 'desc' },
+      take: 3
     })
   ]);
 
@@ -67,8 +78,8 @@ export default async function Home() {
         <p className="text-muted-foreground">Overview of your content performance and assets.</p>
       </div>
 
-      {!isTikTokConnected && (
-        <div className="mb-8 p-4 border border-amber-200 bg-amber-50 rounded-lg flex items-center justify-between dark:bg-amber-950/30 dark:border-amber-900">
+      {!isTikTokConnected ? (
+        <div className="mb-8 p-4 border border-amber-200 bg-amber-50 rounded-lg flex items-center justify-between dark:bg-amber-950/30 dark:border-amber-900 text-amber-900">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
             <div>
@@ -77,6 +88,16 @@ export default async function Home() {
             </div>
           </div>
           <TikTokConnectButton />
+        </div>
+      ) : (
+        <div className="mb-8 p-4 border border-green-200 bg-green-50 rounded-lg flex items-center justify-between dark:bg-green-950/30 dark:border-green-900">
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <div>
+              <h3 className="font-medium text-green-900 dark:text-green-200">TikTok Connected</h3>
+              <p className="text-sm text-green-700 dark:text-green-400">Metrics are syncing automatically.</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -123,6 +144,66 @@ export default async function Home() {
         </Card>
       </div>
 
+      {/* Intelligence Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mb-8">
+        <Card className="col-span-4 border-indigo-100 dark:border-indigo-900 bg-indigo-50/30 dark:bg-indigo-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              Content Intelligence
+            </CardTitle>
+            <CardDescription>AI-driven insights from your video performance.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {activeInsights.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                No insights yet. Connect TikTok and wait for the sync job to analyze enough data.
+              </p>
+            ) : (
+              activeInsights.map(insight => (
+                <div key={insight.id} className="p-3 bg-white dark:bg-slate-950 rounded-md border shadow-sm">
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{insight.insightText}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full capitalize">
+                      {insight.category?.replace('_', ' ')}
+                    </span>
+                    <span>Confidence: {Number(insight.confidenceScore).toFixed(0)}%</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Top Performing Videos</CardTitle>
+            <CardDescription>Best practices based on data.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {bestPractices.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                No top performers identified yet.
+              </div>
+            ) : (
+              bestPractices.map(bp => (
+                <div key={bp.id} className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-bold text-xs shrink-0">
+                    ★
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{bp.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(Number(bp.performanceAvg) || 0).toFixed(1)}% Engagement Rate
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
@@ -139,6 +220,12 @@ export default async function Home() {
               <Button className="w-full h-24 text-lg flex flex-col gap-2" variant="outline">
                 <Library className="h-6 w-6" />
                 Manage Library
+              </Button>
+            </Link>
+            <Link href="/api/cron/sync-tiktok" target="_blank">
+              <Button className="w-full h-24 text-lg flex flex-col gap-2 bg-muted/50 hover:bg-muted" variant="outline">
+                <TrendingUp className="h-6 w-6" />
+                Trigger Sync Job
               </Button>
             </Link>
           </CardContent>
