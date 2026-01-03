@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { videoMetadataSchema } from "@/lib/schemas/video";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // Assuming I added this or Input handles it. Wait, I ran add textarea.
+import { Textarea } from "@/components/ui/textarea";
 import {
     Form,
     FormControl,
@@ -25,21 +24,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { UploadCloud, X, FileVideo } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { LinkIcon } from "lucide-react";
 
 type VideoFormValues = z.infer<typeof videoMetadataSchema>;
 
 export function VideoUploadZone() {
-    const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
 
     const form = useForm<VideoFormValues>({
         resolver: zodResolver(videoMetadataSchema),
         defaultValues: {
+            tiktokUrl: "",
             hook: "",
             caption: "",
             script: "",
@@ -48,143 +44,61 @@ export function VideoUploadZone() {
         },
     });
 
-    const onDrop = useCallback((acceptedFiles: File[]) => {
-        if (acceptedFiles?.length > 0) {
-            const selectedFile = acceptedFiles[0];
-            if (selectedFile.size > 100 * 1024 * 1024) {
-                toast.error("File size too large. Max 100MB allowed.");
-                return;
-            }
-            setFile(selectedFile);
-            toast.success("File selected: " + selectedFile.name);
-        }
-    }, []);
-
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: {
-            "video/mp4": [".mp4"],
-            "video/quicktime": [".mov"],
-        },
-        maxFiles: 1,
-        multiple: false,
-    });
-
-    const removeFile = () => {
-        setFile(null);
-        setUploadProgress(0);
-    };
-
     async function onSubmit(data: VideoFormValues) {
-        if (!file) {
-            toast.error("Please select a video file first");
-            return;
-        }
-
         setUploading(true);
-        setUploadProgress(10); // Start progress
 
         try {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("hook", data.hook);
-            formData.append("caption", data.caption);
-            formData.append("script", data.script);
-            formData.append("description", data.description);
-            if (data.contentType) formData.append("contentType", data.contentType);
-            if (data.cta) formData.append("cta", data.cta);
-            if (data.campaignTag) formData.append("campaignTag", data.campaignTag);
-            // Serialize array
-            // formData.append("targetAudience", JSON.stringify(data.targetAudience)); 
-            // Simplified for MVP, maybe just send checkmarks or parsing logic in backend handles JSON parsing if sent as string. 
-            // My backend parses JSON.parse(formData.get("targetAudience")).
-            // So I should JSON.stringify explicit lists if I had a multi-select. 
-            // For now, let's omit detailed multi-select UI in this snippet to save space, or just pass empty array if not implemented yet.
-
-            // Simulating progress
-            const interval = setInterval(() => {
-                setUploadProgress((prev) => {
-                    if (prev >= 90) return prev;
-                    return prev + 10;
-                });
-            }, 500);
-
-            const response = await fetch("/api/videos/upload", {
+            const response = await fetch("/api/videos", {
                 method: "POST",
-                body: formData,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
             });
-
-            clearInterval(interval);
-            setUploadProgress(100);
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || "Upload failed");
+                throw new Error(errorData.error || "Submission failed");
             }
 
             const result = await response.json();
-            toast.success("Video uploaded successfully!");
-            console.log("Uploaded:", result);
+            toast.success("Video added successfully!");
+            console.log("Added:", result);
 
             // Reset form
-            setFile(null);
             form.reset();
-            setUploadProgress(0);
             setUploading(false);
 
         } catch (error) {
             console.error(error);
             toast.error(error instanceof Error ? error.message : "Something went wrong");
             setUploading(false);
-            setUploadProgress(0);
         }
     }
 
     return (
-        <div className="grid gap-6">
-            {!file ? (
-                <div
-                    {...getRootProps()}
-                    className={`border-2 border-dashed rounded-lg p-12 text-center hover:bg-muted/50 transition-colors cursor-pointer ${isDragActive ? "border-primary bg-muted/50" : "border-muted-foreground/25"
-                        }`}
-                >
-                    <input {...getInputProps()} />
-                    <div className="flex flex-col items-center gap-2">
-                        <UploadCloud className="h-10 w-10 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">Drop video file here</h3>
-                        <p className="text-sm text-muted-foreground">
-                            Drag & drop or click to upload (MP4, MOV up to 100MB)
-                        </p>
-                    </div>
-                </div>
-            ) : (
-                <Card>
-                    <CardContent className="p-6 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 overflow-hidden">
-                            <div className="bg-muted p-2 rounded-md">
-                                <FileVideo className="h-8 w-8 text-primary" />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                                <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-md">
-                                    {file.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {(file.size / (1024 * 1024)).toFixed(2)} MB
-                                </p>
-                            </div>
-                        </div>
-                        {!uploading && (
-                            <Button variant="ghost" size="icon" onClick={removeFile}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </CardContent>
-                    {uploading && <Progress value={uploadProgress} className="h-1 rounded-none" />}
-                </Card>
-            )}
-
+        <div className="grid gap-6 max-w-2xl mx-auto">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+
+                    <FormField
+                        control={form.control}
+                        name="tiktokUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>TikTok URL *</FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                        <LinkIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                                        <Input className="pl-10" placeholder="https://www.tiktok.com/@user/video/..." {...field} disabled={uploading} />
+                                    </div>
+                                </FormControl>
+                                <FormDescription>Link to the uploaded TikTok video</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
                     <div className="grid gap-4 md:grid-cols-2">
                         <FormField
                             control={form.control}
@@ -316,7 +230,7 @@ export function VideoUploadZone() {
                     </div>
 
                     <Button type="submit" className="w-full" disabled={uploading}>
-                        {uploading ? "Uploading..." : "Upload Video & Save Metadata"}
+                        {uploading ? "Saving..." : "Save Video Asset"}
                     </Button>
                 </form>
             </Form>

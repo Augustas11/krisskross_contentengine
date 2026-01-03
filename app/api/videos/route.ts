@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { videoMetadataSchema } from "@/lib/schemas/video";
+import { z } from "zod";
 
 export async function GET(req: NextRequest) {
     try {
@@ -10,7 +14,7 @@ export async function GET(req: NextRequest) {
         const search = searchParams.get("search") || "";
         const contentType = searchParams.get("contentType");
         const campaignTag = searchParams.get("campaignTag");
-        const sort = searchParams.get("sort") || "newest"; // newest, engagement, performance
+        const sort = searchParams.get("sort") || "newest";
 
         const skip = (page - 1) * limit;
 
@@ -32,17 +36,6 @@ export async function GET(req: NextRequest) {
 
         let orderBy: Prisma.VideoOrderByWithRelationInput = { uploadDate: "desc" };
 
-        if (sort === "performance") {
-            // Sort by engagement rate (needs relation, tricky in simple sort, usually handled by fetching and sorting or optimized schema)
-            // For MVP, if we want to sort by latest metrics, we can try relations sort if supported or fallback to just uploadDate.
-            // Prisma supports relation ordering in some cases.
-            // Metrics are 1:N but we usually care about the latest metric.
-            // To keep it simple/performant: we might rely on client-side sort for small datasets or use a 'lastPerformance' field on Video if updated.
-            // Plan: Let's stick to uploadDate default, and maybe basic metric sort if feasible. 
-            // User can sort by engagement in the table (client side for 10-50 videos is fine, server-side for many).
-            // Let's implement newest/oldest for now.
-        }
-
         const [videos, total] = await prisma.$transaction([
             prisma.video.findMany({
                 where,
@@ -59,7 +52,6 @@ export async function GET(req: NextRequest) {
             prisma.video.count({ where }),
         ]);
 
-        // Flatten metrics for easier consumption
         const enrichedVideos = videos.map(v => ({
             ...v,
             currentMetrics: v.metrics[0] || null
@@ -76,6 +68,70 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         console.error("Error fetching videos:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        // For MVP, if auth is not strictly required or if using a placeholder without real DB user:
+        // Checking if we have a user e-mail.
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await req.json();
+
+        // Validate metadata
+        const parsedData = videoMetadataSchema.parse(body);
+
+        // Ensure user exists (in case of race condition or credential login without DB sync)
+        // For MVP speed, we assume user from session exists OR we upsert?
+        // Let's Find the user first.
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
+        });
+
+        if (!user) {
+            // Edge case: User logged in via credentials but not in DB? 
+            // In a real app we'd handle this.
+            // For MVP, return error.
+            return NextResponse.json({ error: "User not found in database" }, { status: 404 });
+        }
+
+        const video = await prisma.video.create({
+            data: {
+                // Metadata
+                hook: parsedData.hook,
+                caption: parsedData.caption,
+                script: parsedData.script,
+                description: parsedData.description,
+                contentType: parsedData.contentType,
+                targetAudience: parsedData.targetAudience || [],
+                cta: parsedData.cta,
+                campaignTag: parsedData.campaignTag,
+
+                // TikTok Link
+                tiktokUrl: parsedData.tiktokUrl,
+
+                // File info (Mocking since no real file)
+                filename: "tiktok_import_" + Date.now(),
+                fileUrl: parsedData.tiktokUrl, // Use TikTok URL as file URL for now? Or keep it separate.
+
+                // Relations
+                user: { connect: { id: user.id } }
+            }
+        });
+
+        return NextResponse.json({ success: true, video });
+
+    } catch (error) {
+        console.error("Creation error:", error);
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
+        }
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

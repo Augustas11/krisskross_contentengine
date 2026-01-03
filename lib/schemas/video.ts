@@ -5,6 +5,7 @@ export const videoMetadataSchema = z.object({
     caption: z.string().max(2200, "Caption must be less than 2200 characters").min(1, "Caption is required"),
     script: z.string().min(1, "Script is required"),
     description: z.string().min(1, "Description is required"),
+    tiktokUrl: z.string().url("Must be a valid TikTok URL"),
     contentType: z.enum([
         "Product Demo",
         "Testimonial",
