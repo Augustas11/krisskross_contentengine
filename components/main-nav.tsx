@@ -19,7 +19,8 @@ export function MainNav() {
         <div className="border-b bg-background">
             <div className="flex h-16 items-center px-4 md:px-6 max-w-7xl mx-auto">
                 <Link href="/" className="flex items-center gap-2 font-bold text-xl mr-6">
-                    KrissKross <span className="text-muted-foreground font-normal">Content Engine</span>
+                    <img src="/logo.png" alt="KrissKross Logo" className="h-8 w-auto" />
+                    <span className="hidden sm:inline-block">KrissKross <span className="text-muted-foreground font-normal">Content Engine</span></span>
                 </Link>
                 <nav className="flex items-center space-x-4 lg:space-x-6 mx-6">
                     {links.map((link) => {
