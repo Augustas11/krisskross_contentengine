@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Video {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") // changed to String to match NextAuth default ID type, or keep UUID if we force NextAuth to use UUIDs. NextAuth default is String (cuid). Let's use String @id @default(cuid()) for User.
+  // Wait, existing Video uses UUID. Postgres usually prefers UUID. NextAuth adapts.
+  // Let's stick to String @id @default(cuid()) for User to be safe with Auth.js, or UUID if preferred.
+  // Existing schema uses UUID for Video. Let's use UUID for User too for consistency.
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename    String   @db.VarChar(255)
+  fileUrl     String   @map("file_url")
+  thumbnailUrl String? @map("thumbnail_url")
+  duration    Int?     // seconds
+  fileSize    Int?     @map("file_size") // bytes
+  uploadDate  DateTime @default(now()) @map("upload_date")
+  
+  // Metadata
+  hook        String
+  caption     String
+  script      String
+  description String
+  contentType String?  @map("content_type") @db.VarChar(50)
+  targetAudience String[] @map("target_audience")
+  cta         String?  @db.VarChar(50)
+  campaignTag String?  @map("campaign_tag") @db.VarChar(100)
+  customTags  String[] @map("custom_tags")
+  
+  // TikTok linking
+  tiktokUrl     String?  @unique @map("tiktok_url")
+  tiktokVideoId String?  @unique @map("tiktok_video_id") @db.VarChar(50)
+  
+  // Soft delete
+  deletedAt   DateTime? @map("deleted_at")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  metrics     TikTokMetric[]
+  comments    TikTokComment[]
+
+  @@map("videos")
+  @@index([campaignTag])
+  @@index([contentType])
+  @@index([uploadDate(sort: Desc)])
+}
+
+model TikTokMetric {
+  id          String   @id @default(uuid()) @db.Uuid
+  videoId     String   @map("video_id") @db.Uuid
+  video       Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // Metrics
+  views       Int      @default(0)
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  shares      Int      @default(0)
+  saves       Int      @default(0)
+  engagementRate Decimal? @map("engagement_rate") @db.Decimal(5, 2) // calculated
+  
+  // Metadata
+  collectedAt      DateTime @default(now()) @map("collected_at")
+  hoursSincePosted Int?     @map("hours_since_posted") // for milestone tracking
+  
+  @@unique([videoId, collectedAt])
+  @@map("tiktok_metrics")
+  @@index([videoId])
+  @@index([collectedAt(sort: Desc)])
+}
+
+model TikTokComment {
+  id          String   @id @default(uuid()) @db.Uuid
+  videoId     String   @map("video_id") @db.Uuid
+  video       Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  commentId   String?  @unique @map("comment_id") @db.VarChar(100) // TikTok comment ID
+  username    String?  @db.VarChar(100)
+  commentText String?  @map("comment_text")
+  postedAt    DateTime? @map("posted_at")
+  
+  // Lead detection
+  isPotentialLead Boolean @default(false) @map("is_potential_lead")
+  leadSignal      String? @map("lead_signal") @db.VarChar(50) // 'question', 'interest', 'request_info'
+  
+  collectedAt DateTime @default(now()) @map("collected_at")
+
+  @@map("tiktok_comments")
+}
+
+model Insight {
+  id          String   @id @default(uuid()) @db.Uuid
+  
+  insightText String   @map("insight_text")
+  category    String?  @db.VarChar(50) // 'hook', 'caption', 'content_type', etc.
+  confidenceScore Decimal? @map("confidence_score") @db.Decimal(3, 2) // 0.00 to 1.00
+  sampleSize  Int?     @map("sample_size") // how many videos support this
+  supportingVideoIds String[] @map("supporting_video_ids") @db.Uuid // array of video IDs
+  
+  status      String   @default("active") @db.VarChar(20) // 'active', 'testing', 'disproven'
+  discoveredAt DateTime @default(now()) @map("discovered_at")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("insights")
+}
+
+model BestPractice {
+  id          String   @id @default(uuid()) @db.Uuid
+  
+  type        String?  @db.VarChar(50) // 'hook_template', 'caption_formula', 'content_script'
+  title       String?  @db.VarChar(255)
+  content     String?
+  exampleVideoIds String[] @map("example_video_ids") @db.Uuid
+  
+  performanceAvg Decimal? @map("performance_avg") @db.Decimal(5, 2) // avg engagement rate
+  useCount    Int      @default(0) @map("use_count") // how many times applied
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("best_practices")
+}
+
+// Auth Models
+
+model Account {
+  id                 String  @id @default(uuid()) // Changed to UUID for consistency
+  userId             String  @map("user_id")
+  type               String
+  provider           String
+  providerAccountId  String  @map("provider_account_id")
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  videos        Video[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
