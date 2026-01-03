@@ -13,26 +13,41 @@ export const authOptions: NextAuthOptions = {
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "email" },
-                password: { label: "Password", type: "password" }, // NOTE: In prod, use standard password hashing!
+                password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
                 if (!credentials?.email) return null;
-
-                // MVP: Simple check or create user for testing?
-                // Ideally we check DB.
                 const user = await prisma.user.findUnique({
                     where: { email: credentials.email }
                 });
-
-                if (user) {
-                    return user;
-                }
-
-                // For MVP ease: Auto-create user if not exists (OPTIONAL, risky for prod but good for MVP velocity)
-                // Let's NOT auto-create in credentials, standard practice is strict.
-                return null;
+                return user || null;
             }
         }),
+        {
+            id: "tiktok",
+            name: "TikTok",
+            type: "oauth",
+            clientId: process.env.TIKTOK_CLIENT_KEY,
+            clientSecret: process.env.TIKTOK_CLIENT_SECRET,
+            authorization: {
+                url: "https://www.tiktok.com/v2/auth/authorize/",
+                params: {
+                    client_key: process.env.TIKTOK_CLIENT_KEY,
+                    scope: "user.info.basic,video.list,video.upload",
+                    response_type: "code",
+                },
+            },
+            token: "https://open.tiktokapis.com/v2/oauth/token/",
+            userinfo: "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
+            profile(profile) {
+                return {
+                    id: profile.data.user.open_id,
+                    name: profile.data.user.display_name,
+                    image: profile.data.user.avatar_url,
+                    email: null, // TikTok API might not return email
+                };
+            },
+        }
     ],
     callbacks: {
         async session({ session, token }) {

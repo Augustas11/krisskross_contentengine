@@ -1,3 +1,4 @@
+import prisma from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,10 +7,59 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LayoutDashboard, Upload, Library, TrendingUp, Users, Video } from "lucide-react";
+import { LayoutDashboard, Upload, Library, TrendingUp, Users, Video as VideoIcon, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { TikTokConnectButton } from "@/components/auth/TikTokConnectButton";
 
-export default function Home() {
+export const dynamic = 'force-dynamic'; // Ensure real-time data
+
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  // Check if user has a TikTok account linked
+  let isTikTokConnected = false;
+  if (session?.user?.email) {
+    // @ts-ignore - Prisma type generation fallback
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { accounts: true }
+    });
+    isTikTokConnected = user?.accounts.some((acc: any) => acc.provider === 'tiktok') || false;
+  }
+
+  const [
+    videoCount,
+    metricStats,
+    videosMissingTags,
+    recentVideos
+  ] = await Promise.all([
+    prisma.video.count(),
+    prisma.tikTokMetric.aggregate({
+      _sum: { views: true },
+      _avg: { engagementRate: true }
+    }),
+    prisma.video.count({
+      where: {
+        OR: [
+          { campaignTag: null },
+          { campaignTag: "" }
+        ]
+      }
+    }),
+    prisma.video.findMany({
+      take: 3,
+      orderBy: { createdAt: 'desc' }
+    })
+  ]);
+
+  const totalViews = metricStats._sum.views || 0;
+  const avgEngagement = metricStats._avg.engagementRate
+    ? Number(metricStats._avg.engagementRate).toFixed(1)
+    : "0.0";
+
   return (
     <div className="container mx-auto py-10 max-w-7xl">
       <div className="flex flex-col space-y-2 mb-8">
@@ -17,15 +67,28 @@ export default function Home() {
         <p className="text-muted-foreground">Overview of your content performance and assets.</p>
       </div>
 
+      {!isTikTokConnected && (
+        <div className="mb-8 p-4 border border-amber-200 bg-amber-50 rounded-lg flex items-center justify-between dark:bg-amber-950/30 dark:border-amber-900">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+            <div>
+              <h3 className="font-medium text-amber-900 dark:text-amber-200">Connect TikTok Account</h3>
+              <p className="text-sm text-amber-700 dark:text-amber-400">Link your account to sync video metrics and access insights.</p>
+            </div>
+          </div>
+          <TikTokConnectButton />
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Videos</CardTitle>
-            <Video className="h-4 w-4 text-muted-foreground" />
+            <VideoIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 from last week</p>
+            <div className="text-2xl font-bold">{videoCount}</div>
+            <p className="text-xs text-muted-foreground">in library</p>
           </CardContent>
         </Card>
         <Card>
@@ -34,8 +97,8 @@ export default function Home() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45.2K</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+            <div className="text-2xl font-bold">{totalViews.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">lifetime views</p>
           </CardContent>
         </Card>
         <Card>
@@ -44,8 +107,8 @@ export default function Home() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5.4%</div>
-            <p className="text-xs text-muted-foreground">+1.2% from last month</p>
+            <div className="text-2xl font-bold">{avgEngagement}%</div>
+            <p className="text-xs text-muted-foreground">average rate</p>
           </CardContent>
         </Card>
         <Card>
@@ -54,8 +117,8 @@ export default function Home() {
             <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">Videos missing tags</p>
+            <div className="text-2xl font-bold">{videosMissingTags}</div>
+            <p className="text-xs text-muted-foreground">Videos missing campaign tags</p>
           </CardContent>
         </Card>
       </div>
@@ -83,22 +146,26 @@ export default function Home() {
         <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest uploads and system updates</CardDescription>
+            <CardDescription>Latest uploads</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="ml-4 space-y-1">
-                  <p className="text-sm font-medium leading-none">New video uploaded</p>
-                  <p className="text-sm text-muted-foreground">"Fashion Hook 1" • 2 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="ml-4 space-y-1">
-                  <p className="text-sm font-medium leading-none">Performance report ready</p>
-                  <p className="text-sm text-muted-foreground">Weekly Analysis • 5 hours ago</p>
-                </div>
-              </div>
+              {recentVideos.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No videos uploaded yet.</p>
+              ) : (
+                recentVideos.map((video) => (
+                  <div key={video.id} className="flex items-center">
+                    <div className="ml-4 space-y-1">
+                      <p className="text-sm font-medium leading-none truncate max-w-[200px]">
+                        {video.filename || "Untitled Video"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {video.contentType || "Unknown Type"} • {formatDistanceToNow(new Date(video.uploadDate), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

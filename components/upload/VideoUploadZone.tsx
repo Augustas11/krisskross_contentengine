@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -25,12 +25,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { LinkIcon } from "lucide-react";
+import { LinkIcon, UploadCloud, FileVideo, X } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 
 type VideoFormValues = z.infer<typeof videoMetadataSchema>;
 
 export function VideoUploadZone() {
     const [uploading, setUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const form = useForm<VideoFormValues>({
         resolver: zodResolver(videoMetadataSchema),
@@ -44,16 +46,81 @@ export function VideoUploadZone() {
         },
     });
 
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        if (acceptedFiles?.[0]) {
+            setSelectedFile(acceptedFiles[0]);
+            form.setValue("filename", acceptedFiles[0].name);
+            // Clear errors for potentially exclusive fields if needed
+        }
+    }, [form]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'video/*': ['.mp4', '.mov', '.avi', '.webm']
+        },
+        maxFiles: 1,
+        multiple: false
+    });
+
+    const removeFile = () => {
+        setSelectedFile(null);
+        form.setValue("filename", undefined);
+    };
+
     async function onSubmit(data: VideoFormValues) {
+        if (!selectedFile && !data.tiktokUrl) {
+            toast.error("Please provide either a video file or a TikTok URL");
+            return;
+        }
+
         setUploading(true);
 
         try {
+            let fileUrl = "";
+
+            if (selectedFile) {
+                // 1. Get Presigned URL
+                const presignedRes = await fetch("/api/upload/presigned", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: selectedFile.name,
+                        contentType: selectedFile.type
+                    })
+                });
+
+                if (!presignedRes.ok) {
+                    const err = await presignedRes.json();
+                    throw new Error(err.error || "Failed to get upload URL");
+                }
+
+                const { uploadUrl, key } = await presignedRes.json();
+
+                // 2. Upload to S3
+                const uploadRes = await fetch(uploadUrl, {
+                    method: "PUT",
+                    body: selectedFile,
+                    headers: { "Content-Type": selectedFile.type }
+                });
+
+                if (!uploadRes.ok) throw new Error("Failed to upload file to storage");
+
+                fileUrl = key; // Storing the storage key
+            }
+
+            const payload = {
+                ...data,
+                fileUrl: fileUrl || undefined,
+                filename: selectedFile?.name || undefined,
+            };
+
             const response = await fetch("/api/videos", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
@@ -62,11 +129,12 @@ export function VideoUploadZone() {
             }
 
             const result = await response.json();
-            toast.success("Video added successfully!");
+            toast.success("Video asset saved successfully!");
             console.log("Added:", result);
 
             // Reset form
             form.reset();
+            setSelectedFile(null);
             setUploading(false);
 
         } catch (error) {
@@ -81,19 +149,64 @@ export function VideoUploadZone() {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
+                    {/* File Upload Zone */}
+                    <div className="space-y-2">
+                        <FormLabel>Video Source</FormLabel>
+                        {!selectedFile ? (
+                            <div
+                                {...getRootProps()}
+                                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive ? "border-primary bg-primary/10" : "border-muted-foreground/25 hover:border-primary/50"
+                                    }`}
+                            >
+                                <input {...getInputProps()} />
+                                <div className="flex flex-col items-center gap-2">
+                                    <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                                    <p className="text-sm font-medium">
+                                        Drag & drop video here, or click to select
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        MP4, MOV, AVI up to 500MB
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4 p-4 border rounded-lg bg-card">
+                                <FileVideo className="h-8 w-8 text-primary" />
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                                    </p>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" onClick={removeFile}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">Or link existing</span>
+                        </div>
+                    </div>
+
                     <FormField
                         control={form.control}
                         name="tiktokUrl"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>TikTok URL *</FormLabel>
+                                <FormLabel>TikTok URL</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <LinkIcon className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
                                         <Input className="pl-10" placeholder="https://www.tiktok.com/@user/video/..." {...field} disabled={uploading} />
                                     </div>
                                 </FormControl>
-                                <FormDescription>Link to the uploaded TikTok video</FormDescription>
+                                <FormDescription>Optional if uploading a file</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}

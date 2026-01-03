@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 export const videoMetadataSchema = z.object({
-    hook: z.string().max(280, "Hook must be less than 280 characters").min(1, "Hook is required"),
-    caption: z.string().max(2200, "Caption must be less than 2200 characters").min(1, "Caption is required"),
+    tiktokUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+    fileUrl: z.string().url("Invalid File URL").optional(),
+    filename: z.string().optional(),
+    hook: z.string().min(1, "Hook is required").max(280),
+    caption: z.string().min(1, "Caption is required").max(2200),
     script: z.string().min(1, "Script is required"),
     description: z.string().min(1, "Description is required"),
-    tiktokUrl: z.string().url("Must be a valid TikTok URL"),
     contentType: z.enum([
         "Product Demo",
         "Testimonial",
