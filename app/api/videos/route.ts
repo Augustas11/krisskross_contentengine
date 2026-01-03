@@ -116,9 +116,9 @@ export async function POST(req: NextRequest) {
                 // TikTok Link
                 tiktokUrl: parsedData.tiktokUrl,
 
-                // File info (Mocking since no real file)
-                filename: "tiktok_import_" + Date.now(),
-                fileUrl: parsedData.tiktokUrl, // Use TikTok URL as file URL for now? Or keep it separate.
+                // File info
+                filename: parsedData.filename || `tiktok_import_${Date.now()}`,
+                fileUrl: parsedData.fileUrl || parsedData.tiktokUrl || "", // Fallback to empty string or handle error if required
 
                 // Relations
                 user: { connect: { id: user.id } }
