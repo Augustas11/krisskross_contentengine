@@ -38,7 +38,8 @@ export async function GET(request: Request) {
         );
     }
 
-    const redirectUri = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/tiktok/callback`;
+    const origin = process.env.NEXTAUTH_URL || new URL(request.url).origin;
+    const redirectUri = `${origin}/api/auth/tiktok/callback`;
 
     try {
         // Exchange code for token
