@@ -1,12 +1,16 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { signIn } from "next-auth/react";
 
 export function TikTokConnectButton() {
+    const handleConnect = () => {
+        // Use our custom TikTok OAuth endpoint
+        window.location.href = "/api/auth/tiktok/authorize";
+    };
+
     return (
         <Button
-            onClick={() => signIn("tiktok")}
+            onClick={handleConnect}
             className="w-full sm:w-auto bg-black hover:bg-gray-800 text-white gap-2"
         >
             <svg
@@ -22,3 +26,4 @@ export function TikTokConnectButton() {
         </Button>
     );
 }
+
