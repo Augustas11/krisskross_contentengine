@@ -78,7 +78,7 @@ export default async function Home() {
         <p className="text-muted-foreground">Overview of your content performance and assets.</p>
       </div>
 
-      {!isTikTokConnected ? (
+      {!isTikTokConnected && (
         <div className="mb-8 p-4 border border-amber-200 bg-amber-50 rounded-lg flex items-center justify-between dark:bg-amber-950/30 dark:border-amber-900 text-amber-900">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
@@ -88,16 +88,6 @@ export default async function Home() {
             </div>
           </div>
           <TikTokConnectButton />
-        </div>
-      ) : (
-        <div className="mb-8 p-4 border border-green-200 bg-green-50 rounded-lg flex items-center justify-between dark:bg-green-950/30 dark:border-green-900">
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            <div>
-              <h3 className="font-medium text-green-900 dark:text-green-200">TikTok Connected</h3>
-              <p className="text-sm text-green-700 dark:text-green-400">Metrics are syncing automatically.</p>
-            </div>
-          </div>
         </div>
       )}
 

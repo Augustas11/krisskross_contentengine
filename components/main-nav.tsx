@@ -6,7 +6,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Upload, Library, Menu } from "lucide-react";
 
-export function MainNav() {
+interface MainNavProps {
+    user?: {
+        name?: string | null;
+        image?: string | null;
+        email?: string | null;
+    };
+}
+
+export function MainNav({ user }: MainNavProps) {
     const pathname = usePathname();
 
     const links = [
@@ -43,12 +51,30 @@ export function MainNav() {
                     })}
                 </nav>
                 <div className="ml-auto flex items-center space-x-4">
-                    {/* User Profile / Settings placeholder */}
-                    <Button variant="ghost" size="icon">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                            <span className="text-xs font-medium">KD</span>
+                    {user ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium hidden md:inline-block">
+                                {user.name}
+                            </span>
+                            <Button variant="ghost" size="icon" className="rounded-full overflow-hidden">
+                                {user.image ? (
+                                    <img src={user.image} alt={user.name || "User"} className="h-8 w-8 object-cover" />
+                                ) : (
+                                    <div className="h-8 w-8 bg-muted flex items-center justify-center">
+                                        <span className="text-xs font-medium">
+                                            {user.name?.charAt(0).toUpperCase() || "U"}
+                                        </span>
+                                    </div>
+                                )}
+                            </Button>
                         </div>
-                    </Button>
+                    ) : (
+                        <Button variant="ghost" size="icon">
+                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                                <span className="text-xs font-medium">KD</span>
+                            </div>
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
