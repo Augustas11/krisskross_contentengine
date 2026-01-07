@@ -17,7 +17,8 @@ function generateState() {
 }
 
 export async function GET() {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY;
+    // DEBUG: Hardcoded Sandbox Key to rule out Env Var issues
+    const clientKey = "awqdo697xbzw8cd6"; // process.env.TIKTOK_CLIENT_KEY;
 
     if (!clientKey) {
         return NextResponse.json({ error: "TikTok client key not configured" }, { status: 500 });
@@ -44,11 +45,13 @@ export async function GET() {
     });
 
     // Build TikTok authorization URL with correct parameters
-    const redirectUri = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/tiktok/callback`;
+    // DEBUG: Hardcoding production URI
+    const redirectUri = "https://krisskross-contentengine.vercel.app/api/auth/tiktok/callback";
 
     const authUrl = new URL("https://www.tiktok.com/v2/auth/authorize/");
     authUrl.searchParams.set("client_key", clientKey);
-    authUrl.searchParams.set("scope", "user.info.basic,user.info.profile,user.info.stats,video.list");
+    // DEBUG: Simplified scopes
+    authUrl.searchParams.set("scope", "user.info.basic,video.list");
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("state", state);
