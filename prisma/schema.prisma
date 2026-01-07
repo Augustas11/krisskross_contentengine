@@ -43,14 +43,20 @@ model Video {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
+  // Analysis tracking
+  analysisStatus   String?  @default("pending") @map("analysis_status") @db.VarChar(20)
+  analysisPriority Int      @default(50) @map("analysis_priority")
+
   // Relations
   metrics     TikTokMetric[]
   comments    TikTokComment[]
+  analysis    VideoAnalysis?
 
   @@map("videos")
   @@index([campaignTag])
   @@index([contentType])
   @@index([uploadDate(sort: Desc)])
+  @@index([analysisStatus])
 }
 
 model TikTokMetric {
@@ -128,6 +134,59 @@ model BestPractice {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("best_practices")
+}
+
+// Video Analysis Model - AI-generated insights
+model VideoAnalysis {
+  id              String   @id @default(uuid()) @db.Uuid
+  videoId         String   @unique @map("video_id") @db.Uuid
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // Hook Analysis
+  hookText             String?  @map("hook_text")
+  hookDurationSeconds  Int?     @map("hook_duration_seconds")
+  hookType             String?  @map("hook_type") @db.VarChar(50)
+  hookVisualElement    String?  @map("hook_visual_element")
+  hookEffectivenessScore Int?   @map("hook_effectiveness_score")
+  
+  // Caption & Script
+  captionCta           String?  @map("caption_cta")
+  fullScript           String?  @map("full_script")
+  scriptKeyMessages    String[] @map("script_key_messages")
+  voiceoverStyle       String?  @map("voiceover_style") @db.VarChar(50)
+  
+  // Visual Description
+  visualEnvironment         String?  @map("visual_environment") @db.VarChar(50)
+  visualLighting            String?  @map("visual_lighting") @db.VarChar(50)
+  visualCameraAngles        String[] @map("visual_camera_angles")
+  visualModelDescription    String?  @map("visual_model_description")
+  visualProductDisplayMethod String? @map("visual_product_display_method") @db.VarChar(50)
+  visualColorPalette        String[] @map("visual_color_palette")
+  visualSceneBreakdown      Json?    @map("visual_scene_breakdown")
+  
+  // Content Classification
+  contentTypePrimary   String?  @map("content_type_primary") @db.VarChar(50)
+  contentTypeSecondary String?  @map("content_type_secondary") @db.VarChar(50)
+  
+  // CTA Analysis
+  ctaPrimary      String?  @map("cta_primary")
+  ctaType         String?  @map("cta_type") @db.VarChar(50)
+  ctaPlacement    String?  @map("cta_placement") @db.VarChar(50)
+  ctaUrgencyLevel String?  @map("cta_urgency_level") @db.VarChar(20)
+  
+  // Campaign
+  campaignCategory String?  @map("campaign_category") @db.VarChar(50)
+  
+  // Metadata
+  analyzedAt             DateTime @default(now()) @map("analyzed_at")
+  analysisConfidenceScore Decimal? @map("analysis_confidence_score") @db.Decimal(3, 2)
+  analysisVersion        String?  @default("1.0.0") @map("analysis_version") @db.VarChar(20)
+  needsHumanReview       Boolean  @default(false) @map("needs_human_review")
+  
+  @@map("video_analysis")
+  @@index([videoId])
+  @@index([contentTypePrimary])
+  @@index([hookType])
 }
 
 // Auth Models

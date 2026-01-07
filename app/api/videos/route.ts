@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
                     metrics: {
                         orderBy: { collectedAt: "desc" },
                         take: 1
-                    }
+                    },
+                    analysis: true
                 }
             }),
             prisma.video.count({ where }),
@@ -54,7 +55,8 @@ export async function GET(req: NextRequest) {
 
         const enrichedVideos = videos.map(v => ({
             ...v,
-            currentMetrics: v.metrics[0] || null
+            currentMetrics: v.metrics[0] || null,
+            // Include analysis status for UI display
         }));
 
         return NextResponse.json({

@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Video, TikTokMetric } from "@prisma/client";
+import { Video, TikTokMetric, VideoAnalysis } from "@prisma/client";
 import { format } from "date-fns";
 import { ArrowUpDown, MoreHorizontal, FileVideo } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 
 export type VideoWithMetrics = Video & {
     currentMetrics: TikTokMetric | null;
+    analysis: VideoAnalysis | null;
 };
 
 export const columns: ColumnDef<VideoWithMetrics>[] = [

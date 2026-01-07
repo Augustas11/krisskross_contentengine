@@ -60,6 +60,9 @@ export async function GET(request: Request) {
                                 caption: videoData.video_description,
                                 script: "",
                                 uploadDate: new Date(videoData.create_time * 1000),
+                                // Analysis queue - user's own videos get high priority
+                                analysisStatus: "pending",
+                                analysisPriority: 100, // High priority for user's videos
                             }
                         });
                         videoId = newVideo.id;
