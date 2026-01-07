@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(request: Request) {
     const url = new URL(request.url);
@@ -91,6 +93,15 @@ export async function GET(request: Request) {
             );
         }
 
+        // Identify the current user from session
+        const session = await getServerSession(authOptions);
+        let currentUser = null;
+        if (session?.user?.email) {
+            currentUser = await prisma.user.findUnique({
+                where: { email: session.user.email },
+            });
+        }
+
         // Find or create user and account
         // First, check if we have an existing account with this TikTok open_id
         let account = await prisma.account.findFirst({
@@ -102,26 +113,42 @@ export async function GET(request: Request) {
         });
 
         if (account) {
-            // Update tokens
-            await prisma.account.update({
-                where: { id: account.id },
-                data: {
-                    access_token,
-                    refresh_token,
-                    expires_at: Math.floor(Date.now() / 1000) + expires_in,
-                },
-            });
+            // Check if the account is linked to the correct user
+            if (currentUser && account.userId !== currentUser.id) {
+                // Relink to the current authenticated user
+                console.log(`Relinking TikTok account from user ${account.userId} to ${currentUser.id}`);
+                await prisma.account.update({
+                    where: { id: account.id },
+                    data: {
+                        userId: currentUser.id,
+                        access_token,
+                        refresh_token,
+                        expires_at: Math.floor(Date.now() / 1000) + expires_in,
+                    },
+                });
+            } else {
+                // Update tokens for existing link
+                await prisma.account.update({
+                    where: { id: account.id },
+                    data: {
+                        access_token,
+                        refresh_token,
+                        expires_at: Math.floor(Date.now() / 1000) + expires_in,
+                    },
+                });
+            }
         } else {
-            // For now, we need to link to an existing user
-            // In a real app, you'd handle user creation/linking more carefully
-            // Let's find the first user or create a new one
-            let user = await prisma.user.findFirst();
+            // New Link: Connect to the currently logged-in user or create new
+            let user = currentUser;
 
+            // Fallback: If no session (unlikely in this flow), try to find by TikTok display name or just create new
             if (!user) {
+                console.log("No session found during TikTok callback, creating new user or using fallback.");
                 user = await prisma.user.create({
                     data: {
                         name: userInfo.display_name,
                         image: userInfo.avatar_url,
+                        email: null, // TikTok doesn't give email by default
                     },
                 });
             }
