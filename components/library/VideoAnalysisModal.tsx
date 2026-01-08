@@ -11,9 +11,10 @@ interface VideoAnalysisModalProps {
     video: VideoCardData | null;
     isOpen: boolean;
     onClose: () => void;
+    onAnalyze?: (videoId: string) => void;
 }
 
-export function VideoAnalysisModal({ video, isOpen, onClose }: VideoAnalysisModalProps) {
+export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoAnalysisModalProps) {
     // Handle escape key
     React.useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -254,9 +255,19 @@ export function VideoAnalysisModal({ video, isOpen, onClose }: VideoAnalysisModa
                                     )}
                                 </>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                                    <Zap className="w-12 h-12 mb-2 opacity-50" />
-                                    <p className="text-sm">No analysis available yet</p>
+                                <div className="flex flex-col items-center justify-center h-full py-12">
+                                    <Zap className="w-16 h-16 mb-4 text-violet-300" />
+                                    <p className="text-base text-slate-500 mb-4">No analysis available yet</p>
+                                    {onAnalyze && (
+                                        <Button
+                                            onClick={() => onAnalyze(video.id)}
+                                            className="bg-violet-600 hover:bg-violet-700 text-white"
+                                            size="lg"
+                                        >
+                                            <Zap className="w-5 h-5 mr-2" />
+                                            Analyze This Video
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </div>

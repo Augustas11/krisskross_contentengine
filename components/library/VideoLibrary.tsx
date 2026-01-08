@@ -416,6 +416,11 @@ export function VideoLibrary() {
                     setIsModalOpen(false);
                     setSelectedVideo(null);
                 }}
+                onAnalyze={(videoId) => {
+                    handleAnalyzeClick(videoId);
+                    setIsModalOpen(false);
+                    setSelectedVideo(null);
+                }}
             />
         </div>
     );

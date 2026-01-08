@@ -29,8 +29,12 @@ export async function POST(
             return NextResponse.json({ error: "Video not found" }, { status: 404 });
         }
 
-        if (video.user.email !== session.user.email) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        // Check user ownership
+        const userOwnsVideo = video.user.email === session.user.email;
+        console.log(`[Analyze] User: ${session.user.email}, Video owner: ${video.user.email}, Match: ${userOwnsVideo}`);
+
+        if (!userOwnsVideo) {
+            return NextResponse.json({ error: "Forbidden - You don't own this video" }, { status: 403 });
         }
 
         // Trigger analysis
