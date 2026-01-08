@@ -100,6 +100,13 @@ export async function analyzeVideo(
         // 5. Build prompt and call Claude
         const prompt = buildAnalysisPrompt(video, latestMetrics);
 
+        // Log the prompt being sent to Claude
+        console.log("=".repeat(80));
+        console.log("[Claude Analysis] PROMPT SENT TO CLAUDE:");
+        console.log("=".repeat(80));
+        console.log(prompt);
+        console.log("=".repeat(80));
+
         const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 2500,
@@ -117,6 +124,13 @@ export async function analyzeVideo(
             throw new Error("No text response from Claude");
         }
 
+        // Log Claude's response
+        console.log("=".repeat(80));
+        console.log("[Claude Analysis] CLAUDE'S RESPONSE:");
+        console.log("=".repeat(80));
+        console.log(textContent.text);
+        console.log("=".repeat(80));
+
         let analysisData: ClaudeAnalysisResponse;
         try {
             // Extract JSON from response (may be wrapped in markdown code blocks)
@@ -126,6 +140,11 @@ export async function analyzeVideo(
                 jsonStr = jsonMatch[1];
             }
             analysisData = JSON.parse(jsonStr.trim());
+
+            // Log parsed analysis
+            console.log("[Claude Analysis] PARSED ANALYSIS DATA:");
+            console.log(JSON.stringify(analysisData, null, 2));
+            console.log("=".repeat(80));
         } catch {
             console.error("Failed to parse Claude response:", textContent.text);
             throw new Error("Failed to parse analysis response");
