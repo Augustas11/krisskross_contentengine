@@ -84,8 +84,11 @@ export function VideoLibrary() {
             const res = await fetch(`/api/videos/${videoId}/analyze`, {
                 method: "POST",
             });
-            if (!res.ok) throw new Error("Failed to trigger analysis");
-            return res.json();
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || `Analysis failed (${res.status})`);
+            }
+            return data;
         },
         onSuccess: () => {
             toast.success("Analysis started", {
