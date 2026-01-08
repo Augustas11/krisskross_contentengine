@@ -105,7 +105,30 @@ export async function analyzeVideo(
         console.log("[Claude Analysis] PROMPT SENT TO CLAUDE:");
         console.log("=".repeat(80));
         console.log(prompt);
+        if (video.thumbnailUrl) {
+            console.log("[Claude Analysis] WITH THUMBNAIL IMAGE:", video.thumbnailUrl);
+        }
         console.log("=".repeat(80));
+
+        // Build message content - include image if thumbnail available
+        const messageContent: Array<{ type: "text"; text: string } | { type: "image"; source: { type: "url"; url: string } }> = [];
+
+        // Add thumbnail image for vision analysis if available
+        if (video.thumbnailUrl) {
+            messageContent.push({
+                type: "image",
+                source: {
+                    type: "url",
+                    url: video.thumbnailUrl,
+                },
+            });
+        }
+
+        // Add the text prompt
+        messageContent.push({
+            type: "text",
+            text: prompt,
+        });
 
         const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
@@ -113,7 +136,7 @@ export async function analyzeVideo(
             messages: [
                 {
                     role: "user",
-                    content: prompt,
+                    content: messageContent,
                 },
             ],
         });
@@ -297,7 +320,16 @@ function buildAnalysisPrompt(
         ? Number(metrics.engagementRate).toFixed(2)
         : "N/A";
 
+    const hasImage = !!video.thumbnailUrl;
+
     return `You are analyzing a TikTok Shop video for fashion/beauty e-commerce. Extract structured insights.
+
+${hasImage ? "IMPORTANT: I have provided the video thumbnail image above. ANALYZE THE ACTUAL IMAGE to extract visual details including:" : "NOTE: No image provided, infer visuals from text context."}
+${hasImage ? "- Any TEXT OVERLAYS visible on the video" : ""}
+${hasImage ? "- The actual environment, lighting, and colors you can see" : ""}
+${hasImage ? "- The model/person appearance and what they are doing" : ""}
+${hasImage ? "- Product display method and positioning" : ""}
+${hasImage ? "- Camera angle and framing" : ""}
 
 VIDEO CONTEXT:
 - URL: ${video.tiktokUrl || video.fileUrl || "N/A"}
@@ -315,13 +347,13 @@ PERFORMANCE:
 - Engagement Rate: ${engagementRate}%
 
 ANALYSIS REQUIRED:
-Extract and structure the following in JSON format:
+Extract and structure the following in JSON format. ${hasImage ? "BASE YOUR VISUAL ANALYSIS ON THE ACTUAL IMAGE PROVIDED, not just the text." : ""}
 
 1. HOOK (first 0-3 seconds):
-   - text: What text or verbal hook is used? Extract from caption/hook field.
+   - text: ${hasImage ? "Extract any text overlays visible in the image, OR use the caption/hook if no text visible" : "What text or verbal hook is used? Extract from caption/hook field."}
    - duration: Estimate seconds (usually 0-3)
    - type: Classify as one of: "pattern_interrupt", "curiosity_gap", "social_proof", "problem_agitation", "bold_claim"
-   - visualElement: Describe likely opening visual based on content
+   - visualElement: ${hasImage ? "Describe what you SEE in the thumbnail image - the actual opening visual" : "Describe likely opening visual based on content"}
    - effectivenessScore: Rate 1-10 based on engagement relative to content type
 
 2. SCRIPT:
@@ -329,13 +361,13 @@ Extract and structure the following in JSON format:
    - keyMessages: Array of 3-5 main selling points
    - voiceoverStyle: One of "professional", "casual", "energetic", "educational"
 
-3. VISUAL:
+3. VISUAL:${hasImage ? " (ANALYZE FROM THE PROVIDED IMAGE)" : ""}
    - environment: One of "urban_street", "studio", "lifestyle_home", "outdoor_nature", "other"
    - lighting: One of "natural_daylight", "studio_lighting", "golden_hour", "night", "mixed"
    - cameraAngles: Array like ["medium_shot", "close_up", "full_body", "product_focus"]
-   - modelDescription: Infer from context or mark as "unknown"
+   - modelDescription: ${hasImage ? "Describe the person/model you see in the image (gender, styling, expression, outfit)" : "Infer from context or mark as 'unknown'"}
    - productDisplay: One of "worn", "held", "demonstrated", "flat_lay", "other"
-   - colorPalette: Array of likely dominant colors based on content
+   - colorPalette: ${hasImage ? "Array of the actual dominant colors you see in the image" : "Array of likely dominant colors based on content"}
    - sceneBreakdown: Array of {timestamp: "0-3s", description: "...", transition: "cut/fade/zoom"}
 
 4. CLASSIFICATION:
@@ -343,7 +375,7 @@ Extract and structure the following in JSON format:
    - secondary: Optional second type if applicable
 
 5. CTA:
-   - extracted: Text of CTA from caption/description
+   - extracted: ${hasImage ? "Extract any CTA text visible in the image, or from caption" : "Text of CTA from caption/description"}
    - primary: Main call-to-action text
    - type: One of "shop_now", "link_in_bio", "follow", "comment", "duet_stitch", "visit_page", "none"
    - placement: One of "opening", "middle", "closing", "throughout", "none"
@@ -353,7 +385,7 @@ Extract and structure the following in JSON format:
    - category: One of "product_launch", "seasonal", "influencer_collab", "organic_content"
 
 7. METADATA:
-   - confidence: 0.00-1.00 score of analysis confidence (lower if limited data)
+   - confidence: 0.00-1.00 score of analysis confidence (${hasImage ? "higher since you have the actual image" : "lower if limited data"})
 
 Return ONLY valid JSON. No markdown formatting, no explanation.`;
 }
