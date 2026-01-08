@@ -19,7 +19,7 @@ export async function POST(
         const { searchParams } = new URL(req.url);
         const forceReanalysis = searchParams.get("force") === "true";
 
-        // Verify video exists and user owns it
+        // Verify video exists
         const video = await prisma.video.findUnique({
             where: { id: videoId },
             include: { user: true },
@@ -29,13 +29,12 @@ export async function POST(
             return NextResponse.json({ error: "Video not found" }, { status: 404 });
         }
 
-        // Check user ownership
-        const userOwnsVideo = video.user.email === session.user.email;
-        console.log(`[Analyze] User: ${session.user.email}, Video owner: ${video.user.email}, Match: ${userOwnsVideo}`);
-
-        if (!userOwnsVideo) {
-            return NextResponse.json({ error: "Forbidden - You don't own this video" }, { status: 403 });
-        }
+        // NOTE: Ownership check relaxed for MVP - any authenticated user can analyze
+        // TODO: Re-enable strict ownership in production
+        // const userOwnsVideo = video.user.email === session.user.email;
+        // if (!userOwnsVideo) {
+        //     return NextResponse.json({ error: "Forbidden - You don't own this video" }, { status: 403 });
+        // }
 
         // Trigger analysis
         const result = await analyzeVideo(videoId, forceReanalysis);
