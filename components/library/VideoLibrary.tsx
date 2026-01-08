@@ -80,8 +80,11 @@ export function VideoLibrary() {
 
     // Mutation for triggering video analysis
     const analyzeMutation = useMutation({
-        mutationFn: async (videoId: string) => {
-            const res = await fetch(`/api/videos/${videoId}/analyze`, {
+        mutationFn: async ({ videoId, force = false }: { videoId: string; force?: boolean }) => {
+            const url = force
+                ? `/api/videos/${videoId}/analyze?force=true`
+                : `/api/videos/${videoId}/analyze`;
+            const res = await fetch(url, {
                 method: "POST",
             });
             const data = await res.json();
@@ -90,12 +93,12 @@ export function VideoLibrary() {
             }
             return data;
         },
-        onSuccess: () => {
-            toast.success("Analysis started", {
-                description: "The video is being analyzed. This may take a moment.",
+        onSuccess: (_, variables) => {
+            toast.success(variables.force ? "Re-analysis started" : "Analysis started", {
+                description: "The video is being analyzed with vision. This may take a moment.",
             });
             // Refetch videos to show updated status
-            setTimeout(() => refetch(), 2000);
+            setTimeout(() => refetch(), 3000);
         },
         onError: (error) => {
             toast.error("Analysis failed", {
@@ -189,8 +192,8 @@ export function VideoLibrary() {
         setIsModalOpen(true);
     };
 
-    const handleAnalyzeClick = (videoId: string) => {
-        analyzeMutation.mutate(videoId);
+    const handleAnalyzeClick = (videoId: string, force: boolean = false) => {
+        analyzeMutation.mutate({ videoId, force });
     };
 
     return (
@@ -419,8 +422,8 @@ export function VideoLibrary() {
                     setIsModalOpen(false);
                     setSelectedVideo(null);
                 }}
-                onAnalyze={(videoId) => {
-                    handleAnalyzeClick(videoId);
+                onAnalyze={(videoId, force) => {
+                    handleAnalyzeClick(videoId, force);
                     setIsModalOpen(false);
                     setSelectedVideo(null);
                 }}

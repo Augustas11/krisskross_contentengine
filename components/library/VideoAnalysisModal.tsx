@@ -11,7 +11,7 @@ interface VideoAnalysisModalProps {
     video: VideoCardData | null;
     isOpen: boolean;
     onClose: () => void;
-    onAnalyze?: (videoId: string) => void;
+    onAnalyze?: (videoId: string, force?: boolean) => void;
 }
 
 export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoAnalysisModalProps) {
@@ -50,14 +50,27 @@ export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoA
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                         Video Analysis
                     </h2>
-                    <Button
-                        onClick={onClose}
-                        variant="ghost"
-                        size="icon"
-                        className="text-slate-500 hover:text-slate-700"
-                    >
-                        <X className="w-5 h-5" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {analysis && onAnalyze && (
+                            <Button
+                                onClick={() => onAnalyze(video.id, true)}
+                                variant="outline"
+                                size="sm"
+                                className="text-violet-600 border-violet-300 hover:bg-violet-50"
+                            >
+                                <Zap className="w-4 h-4 mr-1" />
+                                Re-analyze
+                            </Button>
+                        )}
+                        <Button
+                            onClick={onClose}
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-500 hover:text-slate-700"
+                        >
+                            <X className="w-5 h-5" />
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Content */}
