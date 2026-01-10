@@ -143,6 +143,15 @@ export async function POST(req: NextRequest) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: "Validation failed", details: (error as any).errors }, { status: 400 });
         }
+        // Handle Prisma unique constraint violation
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === "P2002") {
+                const target = (error.meta?.target as string[])?.join(", ") || "field";
+                return NextResponse.json({
+                    error: `This TikTok URL has already been uploaded. Please use a different video.`
+                }, { status: 409 });
+            }
+        }
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
