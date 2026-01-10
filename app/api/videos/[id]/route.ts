@@ -35,3 +35,25 @@ export async function GET(
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
+
+export async function DELETE(
+    req: NextRequest,
+    props: { params: Promise<{ id: string }> }
+) {
+    const params = await props.params;
+    try {
+        const id = params.id;
+
+        // Soft delete by setting deletedAt
+        const video = await prisma.video.update({
+            where: { id },
+            data: { deletedAt: new Date() }
+        });
+
+        return NextResponse.json({ success: true, message: "Video deleted" });
+
+    } catch (error) {
+        console.error("Error deleting video:", error);
+        return NextResponse.json({ error: "Failed to delete video" }, { status: 500 });
+    }
+}

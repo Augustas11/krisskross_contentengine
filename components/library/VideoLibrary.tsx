@@ -107,6 +107,31 @@ export function VideoLibrary() {
         },
     });
 
+    // Mutation for deleting videos
+    const deleteMutation = useMutation({
+        mutationFn: async (videoId: string) => {
+            const res = await fetch(`/api/videos/${videoId}`, {
+                method: "DELETE",
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || `Delete failed (${res.status})`);
+            }
+            return data;
+        },
+        onSuccess: () => {
+            toast.success("Video deleted", {
+                description: "The video has been removed from your library.",
+            });
+            refetch();
+        },
+        onError: (error) => {
+            toast.error("Delete failed", {
+                description: error.message,
+            });
+        },
+    });
+
     const videos: VideoWithMetrics[] = data?.data || [];
     const meta = data?.meta || { total: 0, totalPages: 1 };
 
@@ -194,6 +219,12 @@ export function VideoLibrary() {
 
     const handleAnalyzeClick = (videoId: string, force: boolean = false) => {
         analyzeMutation.mutate({ videoId, force });
+    };
+
+    const handleDeleteClick = (videoId: string) => {
+        if (confirm("Are you sure you want to delete this video? This action cannot be undone.")) {
+            deleteMutation.mutate(videoId);
+        }
     };
 
     return (
@@ -312,6 +343,7 @@ export function VideoLibrary() {
                                     video={video}
                                     onVideoClick={handleVideoClick}
                                     onAnalyzeClick={handleAnalyzeClick}
+                                    onDeleteClick={handleDeleteClick}
                                 />
                             ))}
                         </div>

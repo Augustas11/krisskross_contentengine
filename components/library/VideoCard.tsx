@@ -1,10 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Play, TrendingUp, Tag, MessageCircle, Eye, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, TrendingUp, Tag, MessageCircle, Eye, Zap, ChevronDown, ChevronUp, Trash2, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 interface VideoAnalysis {
@@ -63,9 +69,10 @@ interface VideoCardProps {
     video: VideoCardData;
     onVideoClick?: (video: VideoCardData) => void;
     onAnalyzeClick?: (videoId: string) => void;
+    onDeleteClick?: (videoId: string) => void;
 }
 
-export function VideoCard({ video, onVideoClick, onAnalyzeClick }: VideoCardProps) {
+export function VideoCard({ video, onVideoClick, onAnalyzeClick, onDeleteClick }: VideoCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
 
     const hasAnalysis = video.analysis !== null;
@@ -102,15 +109,41 @@ export function VideoCard({ video, onVideoClick, onAnalyzeClick }: VideoCardProp
                     <Play className="w-16 h-16 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="white" />
                 </div>
 
-                {/* Engagement rate badge (top right) */}
-                {engagementRate && (
-                    <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-white text-xs font-semibold">
-                            {engagementRate}%
-                        </span>
-                    </div>
-                )}
+                {/* Actions menu (top right) */}
+                <div className="absolute top-2 right-2 flex items-center gap-1">
+                    {engagementRate && (
+                        <div className="bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1">
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-white text-xs font-semibold">
+                                {engagementRate}%
+                            </span>
+                        </div>
+                    )}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 bg-black/70 hover:bg-black/90 text-white"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <MoreVertical className="w-4 h-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteClick?.(video.id);
+                                }}
+                                className="text-red-600 focus:text-red-600"
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Video
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
 
                 {/* Content type badge (top left) */}
                 {(hasAnalysis && video.analysis?.contentTypePrimary) && (
