@@ -34,6 +34,7 @@ import { VideoWithMetrics, columns } from "./columns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VideoCard, VideoCardData } from "./VideoCard";
 import { VideoAnalysisModal } from "./VideoAnalysisModal";
+import { ManualAnalysisModal } from "./ManualAnalysisModal";
 import { toast } from "sonner";
 
 type ViewMode = "table" | "grid";
@@ -51,6 +52,10 @@ export function VideoLibrary() {
     // Modal state
     const [selectedVideo, setSelectedVideo] = React.useState<VideoCardData | null>(null);
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+
+    // Manual Analysis Modal
+    const [manualAnalysisVideoId, setManualAnalysisVideoId] = React.useState<string | null>(null);
+    const [isManualModalOpen, setIsManualModalOpen] = React.useState(false);
 
     // Server-side filtering state
     const [search, setSearch] = React.useState("");
@@ -228,6 +233,11 @@ export function VideoLibrary() {
         }
     };
 
+    const handleManualAnalysis = (videoId: string) => {
+        setManualAnalysisVideoId(videoId);
+        setIsManualModalOpen(true);
+    };
+
     return (
         <div className="w-full space-y-4">
             {/* Filters & Controls */}
@@ -344,6 +354,7 @@ export function VideoLibrary() {
                                     video={video}
                                     onVideoClick={handleVideoClick}
                                     onAnalyzeClick={handleAnalyzeClick}
+                                    onManualAnalyzeClick={handleManualAnalysis}
                                     onDeleteClick={handleDeleteClick}
                                 />
                             ))}
@@ -459,6 +470,19 @@ export function VideoLibrary() {
                     handleAnalyzeClick(videoId, force);
                     setIsModalOpen(false);
                     setSelectedVideo(null);
+                }}
+            />
+
+            <ManualAnalysisModal
+                videoId={manualAnalysisVideoId}
+                isOpen={isManualModalOpen}
+                onClose={() => {
+                    setIsManualModalOpen(false);
+                    setManualAnalysisVideoId(null);
+                }}
+                onSuccess={() => {
+                    toast.success("Analysis added manually");
+                    refetch(); // Refresh library
                 }}
             />
         </div>

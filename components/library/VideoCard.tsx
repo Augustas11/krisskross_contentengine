@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Play, TrendingUp, Tag, MessageCircle, Eye, Zap, ChevronDown, ChevronUp, Trash2, MoreVertical } from "lucide-react";
+import { Play, TrendingUp, Tag, MessageCircle, Eye, Zap, ChevronDown, ChevronUp, Trash2, MoreVertical, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,10 +70,11 @@ interface VideoCardProps {
     video: VideoCardData;
     onVideoClick?: (video: VideoCardData) => void;
     onAnalyzeClick?: (videoId: string) => void;
+    onManualAnalyzeClick?: (videoId: string) => void;
     onDeleteClick?: (videoId: string) => void;
 }
 
-export function VideoCard({ video, onVideoClick, onAnalyzeClick, onDeleteClick }: VideoCardProps) {
+export function VideoCard({ video, onVideoClick, onAnalyzeClick, onManualAnalyzeClick, onDeleteClick }: VideoCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(false);
 
     const hasAnalysis = video.analysis !== null;
@@ -184,6 +185,15 @@ export function VideoCard({ video, onVideoClick, onAnalyzeClick, onDeleteClick }
                         >
                             <Zap className="w-4 h-4 mr-2" />
                             Analyze Video
+                        </Button>
+                        <Button
+                            onClick={() => onManualAnalyzeClick?.(video.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="w-full text-xs text-slate-500 hover:text-violet-600"
+                        >
+                            <Upload className="w-3 h-3 mr-2" />
+                            Manual Analysis
                         </Button>
                     </div>
                 ) : hasAnalysis ? (

@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { TikTokConnectButton } from "@/components/auth/TikTokConnectButton";
+import { WinningFormulas } from "@/components/dashboard/WinningFormulas";
 
 export const dynamic = 'force-dynamic'; // Ensure real-time data
 
@@ -132,6 +133,11 @@ export default async function Home() {
             <p className="text-xs text-muted-foreground">Videos missing campaign tags</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Winning Formulas Section */}
+      <div className="mb-8">
+        <WinningFormulas />
       </div>
 
       {/* Intelligence Row */}

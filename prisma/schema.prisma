@@ -140,8 +140,8 @@ model BestPractice {
 // Video Analysis Model - AI-generated insights
 model VideoAnalysis {
   id              String   @id @default(uuid()) @db.Uuid
-  videoId         String   @unique @map("video_id") @db.Uuid
-  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId         String?  @unique @map("video_id") @db.Uuid
+  video           Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
   
   // Hook Analysis
   hookText             String?  @map("hook_text")
@@ -184,10 +184,31 @@ model VideoAnalysis {
   analysisVersion        String?  @default("1.0.0") @map("analysis_version") @db.VarChar(20)
   needsHumanReview       Boolean  @default(false) @map("needs_human_review")
   
+  // Manual / Source Tracking
+  userId                 String?  @map("user_id") // Optional for now to avoid breaking existing, but required for manual
+  user                   User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceType             String   @default("apify") @map("source_type") @db.VarChar(20) // 'apify', 'manual', 'hybrid'
+  manualEntryJson        Json?    @map("manual_entry_json")
+  performanceTracked     Boolean  @default(false) @map("performance_tracked")
+
   @@map("video_analysis")
   @@index([videoId])
+  @@index([userId])
   @@index([contentTypePrimary])
   @@index([hookType])
+}
+
+model UserPatternInsight {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insights     Json     // Array of insights
+  videoCount   Int      @map("video_count")
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+  expiresAt    DateTime @map("expires_at")
+
+  @@map("user_pattern_insights")
+  @@index([expiresAt])
 }
 
 // Auth Models
@@ -232,6 +253,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   videos        Video[]
+  videoAnalyses VideoAnalysis[]
+  patternInsights UserPatternInsight?
 
   @@map("users")
 }
