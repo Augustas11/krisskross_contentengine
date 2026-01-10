@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { videoMetadataSchema } from "@/lib/schemas/video";
 import { z } from "zod";
+import { fetchTikTokOEmbed } from "@/lib/tiktok-oembed";
 
 export async function GET(req: NextRequest) {
     try {
@@ -103,6 +104,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User not found in database" }, { status: 404 });
         }
 
+        // Fetch thumbnail from TikTok oEmbed if a TikTok URL is provided
+        let thumbnailUrl: string | undefined;
+        if (parsedData.tiktokUrl) {
+            const oembed = await fetchTikTokOEmbed(parsedData.tiktokUrl);
+            thumbnailUrl = oembed.thumbnailUrl ?? undefined;
+        }
+
         const video = await prisma.video.create({
             data: {
                 // Metadata
@@ -121,6 +129,7 @@ export async function POST(req: NextRequest) {
                 // File info
                 filename: parsedData.filename || `tiktok_import_${Date.now()}`,
                 fileUrl: parsedData.fileUrl || parsedData.tiktokUrl || "", // Fallback to empty string or handle error if required
+                thumbnailUrl: thumbnailUrl,
 
                 // Relations
                 user: { connect: { id: user.id } }
