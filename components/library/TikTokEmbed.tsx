@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TikTokEmbedProps {
     embedCode: string;
@@ -13,28 +13,35 @@ interface TikTokEmbedProps {
  */
 export function TikTokEmbed({ embedCode, className }: TikTokEmbedProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [key, setKey] = useState(0);
 
     useEffect(() => {
         if (!embedCode || !containerRef.current) return;
 
+        // Strip any existing script tags from embed code (we load it separately)
+        const cleanedCode = embedCode.replace(/<script[^>]*>.*?<\/script>/gi, "");
+
         // Set the embed HTML
-        containerRef.current.innerHTML = embedCode;
+        containerRef.current.innerHTML = cleanedCode;
 
-        // Check if TikTok embed script is already loaded
-        const existingScript = document.querySelector('script[src="https://www.tiktok.com/embed.js"]');
+        // Remove existing TikTok embed script to force reload
+        const existingScripts = document.querySelectorAll('script[src*="tiktok.com/embed"]');
+        existingScripts.forEach(script => script.remove());
 
-        if (existingScript) {
-            // If script exists, trigger re-render by calling window.tiktokEmbed
-            if ((window as any).tiktokEmbed) {
-                (window as any).tiktokEmbed.init();
-            }
-        } else {
-            // Load the TikTok embed script
-            const script = document.createElement("script");
-            script.src = "https://www.tiktok.com/embed.js";
-            script.async = true;
-            document.body.appendChild(script);
+        // Clear any existing TikTok embed state
+        if ((window as any).tiktokEmbed) {
+            delete (window as any).tiktokEmbed;
         }
+
+        // Load the TikTok embed script fresh
+        const script = document.createElement("script");
+        script.src = "https://www.tiktok.com/embed.js";
+        script.async = true;
+        script.onload = () => {
+            // Script loaded, it will auto-initialize embeds
+            console.log("[TikTok Embed] Script loaded");
+        };
+        document.body.appendChild(script);
 
         // Cleanup
         return () => {
@@ -42,17 +49,24 @@ export function TikTokEmbed({ embedCode, className }: TikTokEmbedProps) {
                 containerRef.current.innerHTML = "";
             }
         };
-    }, [embedCode]);
+    }, [embedCode, key]);
+
+    // Force re-render on mount
+    useEffect(() => {
+        const timer = setTimeout(() => setKey(k => k + 1), 100);
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <div
             ref={containerRef}
             className={className}
             style={{
-                minHeight: "200px",
+                minHeight: "400px",
                 display: "flex",
                 justifyContent: "center",
-                alignItems: "center"
+                alignItems: "flex-start",
+                overflow: "auto"
             }}
         />
     );
