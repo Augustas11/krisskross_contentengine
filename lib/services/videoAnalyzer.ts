@@ -43,6 +43,10 @@ interface ClaudeAnalysisResponse {
     campaign: {
         category: "product_launch" | "seasonal" | "influencer_collab" | "organic_content";
     };
+    performance_factors: {
+        strengths: string[];
+        winning_patterns: string[];
+    };
     metadata: {
         confidence: number;
     };
@@ -222,6 +226,10 @@ export async function analyzeVideo(
                 analysisVersion: "1.0.0",
                 needsHumanReview: needsReview,
                 analyzedAt: new Date(),
+
+                // Storage of full JSON and source
+                manualEntryJson: analysisData as any,
+                sourceType: "ai",
             },
             create: {
                 videoId: videoId,
@@ -265,6 +273,10 @@ export async function analyzeVideo(
                 analysisConfidenceScore: analysisData.metadata.confidence,
                 analysisVersion: "1.0.0",
                 needsHumanReview: needsReview,
+
+                // Storage of full JSON and source
+                manualEntryJson: analysisData as any,
+                sourceType: "ai",
             },
         });
 
@@ -384,7 +396,11 @@ Extract and structure the following in JSON format. ${hasImage ? "BASE YOUR VISU
 6. CAMPAIGN:
    - category: One of "product_launch", "seasonal", "influencer_collab", "organic_content"
 
-7. METADATA:
+8. PERFORMANCE FACTORS:
+   - strengths: Array of 3-5 specific strong points of this video
+   - winning_patterns: Array of 2-3 recognizable patterns (e.g. "Tutorial format", "Feature-first approach")
+
+9. METADATA:
    - confidence: 0.00-1.00 score of analysis confidence (${hasImage ? "higher since you have the actual image" : "lower if limited data"})
 
 Return ONLY valid JSON. No markdown formatting, no explanation.`;
