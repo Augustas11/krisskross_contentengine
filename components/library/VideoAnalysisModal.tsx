@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X, Zap, Eye, MessageCircle, Share2, Heart, Tag, TrendingUp } from "lucide-react";
+import { X, Zap, Eye, MessageCircle, Share2, Heart, Tag, TrendingUp, Code } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +16,8 @@ interface VideoAnalysisModalProps {
 }
 
 export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoAnalysisModalProps) {
+    const [showJson, setShowJson] = React.useState(false);
+
     // Handle escape key
     React.useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -52,6 +54,17 @@ export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoA
                         Video Analysis
                     </h2>
                     <div className="flex items-center gap-2">
+                        {analysis && (
+                            <Button
+                                onClick={() => setShowJson(!showJson)}
+                                variant="ghost"
+                                size="sm"
+                                className={`text-slate-500 hover:text-violet-600 ${showJson ? "bg-slate-100 dark:bg-slate-800 text-violet-600" : ""}`}
+                            >
+                                <Code className="w-4 h-4 mr-1" />
+                                {showJson ? "View UI" : "JSON"}
+                            </Button>
+                        )}
                         {analysis && onAnalyze && (
                             <Button
                                 onClick={() => onAnalyze(video.id, true)}
@@ -76,223 +89,238 @@ export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoA
 
                 {/* Content */}
                 <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                        {/* Left: Video & Performance */}
-                        <div className="space-y-4">
-                            {/* Video Thumbnail/Player */}
-                            <div className="bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
-                                {video.embedCode ? (
-                                    <TikTokEmbed
-                                        embedCode={video.embedCode}
-                                        className="w-full"
-                                    />
-                                ) : video.thumbnailUrl ? (
-                                    <div className="aspect-[9/16]">
-                                        <img
-                                            src={video.thumbnailUrl}
-                                            alt={video.filename}
-                                            className="w-full h-full object-cover"
+                    {showJson ? (
+                        <div className="bg-slate-900 rounded-lg p-4 overflow-x-auto">
+                            <pre className="text-sm font-mono text-green-400 whitespace-pre-wrap">
+                                {analysis?.manualEntryJson
+                                    ? JSON.stringify(analysis.manualEntryJson, null, 2)
+                                    : JSON.stringify(analysis, (key, value) => {
+                                        // Filter out internal fields if constructing from flat
+                                        if (key === 'manualEntryJson') return undefined;
+                                        return value;
+                                    }, 2)
+                                }
+                            </pre>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Left: Video & Performance */}
+                            <div className="space-y-4">
+                                {/* Video Thumbnail/Player */}
+                                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                                    {video.embedCode ? (
+                                        <TikTokEmbed
+                                            embedCode={video.embedCode}
+                                            className="w-full"
                                         />
-                                    </div>
-                                ) : (
-                                    <div className="aspect-[9/16] w-full flex items-center justify-center text-slate-400">
-                                        No Preview Available
+                                    ) : video.thumbnailUrl ? (
+                                        <div className="aspect-[9/16]">
+                                            <img
+                                                src={video.thumbnailUrl}
+                                                alt={video.filename}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="aspect-[9/16] w-full flex items-center justify-center text-slate-400">
+                                            No Preview Available
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Performance Metrics Grid */}
+                                {metrics && (
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <MetricCard
+                                            icon={<Eye className="w-5 h-5" />}
+                                            value={formatNumber(metrics.views)}
+                                            label="Views"
+                                            color="blue"
+                                        />
+                                        <MetricCard
+                                            icon={<Heart className="w-5 h-5" />}
+                                            value={formatNumber(metrics.likes)}
+                                            label="Likes"
+                                            color="pink"
+                                        />
+                                        <MetricCard
+                                            icon={<TrendingUp className="w-5 h-5" />}
+                                            value={`${metrics.engagementRate ? Number(metrics.engagementRate).toFixed(2) : 0}%`}
+                                            label="Engagement"
+                                            color="green"
+                                        />
+                                        <MetricCard
+                                            icon={<MessageCircle className="w-5 h-5" />}
+                                            value={formatNumber(metrics.comments)}
+                                            label="Comments"
+                                            color="purple"
+                                        />
+                                        <MetricCard
+                                            icon={<Share2 className="w-5 h-5" />}
+                                            value={formatNumber(metrics.shares)}
+                                            label="Shares"
+                                            color="orange"
+                                        />
+                                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-center">
+                                            {video.tiktokUrl && (
+                                                <a
+                                                    href={video.tiktokUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-violet-600 hover:underline"
+                                                >
+                                                    View on TikTok →
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Performance Metrics Grid */}
-                            {metrics && (
-                                <div className="grid grid-cols-3 gap-2">
-                                    <MetricCard
-                                        icon={<Eye className="w-5 h-5" />}
-                                        value={formatNumber(metrics.views)}
-                                        label="Views"
-                                        color="blue"
-                                    />
-                                    <MetricCard
-                                        icon={<Heart className="w-5 h-5" />}
-                                        value={formatNumber(metrics.likes)}
-                                        label="Likes"
-                                        color="pink"
-                                    />
-                                    <MetricCard
-                                        icon={<TrendingUp className="w-5 h-5" />}
-                                        value={`${metrics.engagementRate ? Number(metrics.engagementRate).toFixed(2) : 0}%`}
-                                        label="Engagement"
-                                        color="green"
-                                    />
-                                    <MetricCard
-                                        icon={<MessageCircle className="w-5 h-5" />}
-                                        value={formatNumber(metrics.comments)}
-                                        label="Comments"
-                                        color="purple"
-                                    />
-                                    <MetricCard
-                                        icon={<Share2 className="w-5 h-5" />}
-                                        value={formatNumber(metrics.shares)}
-                                        label="Shares"
-                                        color="orange"
-                                    />
-                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-center">
-                                        {video.tiktokUrl && (
-                                            <a
-                                                href={video.tiktokUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-sm text-violet-600 hover:underline"
-                                            >
-                                                View on TikTok →
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Right: Analysis Details */}
-                        <div className="space-y-5">
-                            {analysis ? (
-                                <>
-                                    {/* Hook Analysis */}
-                                    <AnalysisSection title="Hook Analysis" icon={<Zap className="w-5 h-5 text-amber-500" />}>
-                                        <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                                {analysis.hookType && (
-                                                    <Badge className="bg-violet-600 text-white">
-                                                        {formatLabel(analysis.hookType)}
-                                                    </Badge>
-                                                )}
-                                                {analysis.hookEffectivenessScore && (
-                                                    <span className="text-lg font-bold text-violet-600">
-                                                        {analysis.hookEffectivenessScore}/10
-                                                    </span>
+                            {/* Right: Analysis Details */}
+                            <div className="space-y-5">
+                                {analysis ? (
+                                    <>
+                                        {/* Hook Analysis */}
+                                        <AnalysisSection title="Hook Analysis" icon={<Zap className="w-5 h-5 text-amber-500" />}>
+                                            <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-4">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    {analysis.hookType && (
+                                                        <Badge className="bg-violet-600 text-white">
+                                                            {formatLabel(analysis.hookType)}
+                                                        </Badge>
+                                                    )}
+                                                    {analysis.hookEffectivenessScore && (
+                                                        <span className="text-lg font-bold text-violet-600">
+                                                            {analysis.hookEffectivenessScore}/10
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-slate-700 dark:text-slate-300 italic">
+                                                    &ldquo;{analysis.hookText || video.hook}&rdquo;
+                                                </p>
+                                                {analysis.hookVisualElement && (
+                                                    <p className="text-xs text-slate-500 mt-2">
+                                                        Visual: {analysis.hookVisualElement}
+                                                    </p>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 italic">
-                                                &ldquo;{analysis.hookText || video.hook}&rdquo;
-                                            </p>
-                                            {analysis.hookVisualElement && (
-                                                <p className="text-xs text-slate-500 mt-2">
-                                                    Visual: {analysis.hookVisualElement}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </AnalysisSection>
+                                        </AnalysisSection>
 
-                                    <Separator />
+                                        <Separator />
 
-                                    {/* Caption & Script */}
-                                    <AnalysisSection title="Caption & Script">
-                                        <div className="space-y-3">
-                                            <div>
-                                                <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Caption</h4>
-                                                <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                                                    {video.caption || "No caption"}
-                                                </p>
-                                            </div>
-
-                                            {analysis.fullScript && (
+                                        {/* Caption & Script */}
+                                        <AnalysisSection title="Caption & Script">
+                                            <div className="space-y-3">
                                                 <div>
-                                                    <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Script</h4>
-                                                    <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg p-3 whitespace-pre-wrap">
-                                                        {analysis.fullScript}
+                                                    <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Caption</h4>
+                                                    <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                                                        {video.caption || "No caption"}
                                                     </p>
                                                 </div>
-                                            )}
 
-                                            {analysis.scriptKeyMessages?.length > 0 && (
-                                                <div>
-                                                    <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Key Messages</h4>
-                                                    <ul className="list-disc list-inside text-sm text-slate-700 dark:text-slate-300 space-y-1">
-                                                        {analysis.scriptKeyMessages.map((msg, i) => (
-                                                            <li key={i}>{msg}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AnalysisSection>
+                                                {analysis.fullScript && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Script</h4>
+                                                        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg p-3 whitespace-pre-wrap">
+                                                            {analysis.fullScript}
+                                                        </p>
+                                                    </div>
+                                                )}
 
-                                    <Separator />
+                                                {analysis.scriptKeyMessages?.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Key Messages</h4>
+                                                        <ul className="list-disc list-inside text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                                                            {analysis.scriptKeyMessages.map((msg, i) => (
+                                                                <li key={i}>{msg}</li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </AnalysisSection>
 
-                                    {/* Visual Style */}
-                                    <AnalysisSection title="Visual Style">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {analysis.visualEnvironment && (
-                                                <StyleTag label="Environment" value={formatLabel(analysis.visualEnvironment)} color="blue" />
-                                            )}
-                                            {analysis.visualLighting && (
-                                                <StyleTag label="Lighting" value={formatLabel(analysis.visualLighting)} color="yellow" />
-                                            )}
-                                            {analysis.visualProductDisplayMethod && (
-                                                <StyleTag label="Display" value={formatLabel(analysis.visualProductDisplayMethod)} color="green" />
-                                            )}
-                                            {analysis.contentTypePrimary && (
-                                                <StyleTag label="Type" value={formatLabel(analysis.contentTypePrimary)} color="purple" />
-                                            )}
-                                        </div>
-                                    </AnalysisSection>
+                                        <Separator />
 
-                                    <Separator />
+                                        {/* Visual Style */}
+                                        <AnalysisSection title="Visual Style">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {analysis.visualEnvironment && (
+                                                    <StyleTag label="Environment" value={formatLabel(analysis.visualEnvironment)} color="blue" />
+                                                )}
+                                                {analysis.visualLighting && (
+                                                    <StyleTag label="Lighting" value={formatLabel(analysis.visualLighting)} color="yellow" />
+                                                )}
+                                                {analysis.visualProductDisplayMethod && (
+                                                    <StyleTag label="Display" value={formatLabel(analysis.visualProductDisplayMethod)} color="green" />
+                                                )}
+                                                {analysis.contentTypePrimary && (
+                                                    <StyleTag label="Type" value={formatLabel(analysis.contentTypePrimary)} color="purple" />
+                                                )}
+                                            </div>
+                                        </AnalysisSection>
 
-                                    {/* CTA & Campaign */}
-                                    <AnalysisSection title="Call-to-Action">
-                                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-2">
-                                            {analysis.ctaPrimary && (
-                                                <div>
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                        {formatLabel(analysis.ctaType || "none")}:
-                                                    </span>{" "}
-                                                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                                                        {analysis.ctaPrimary}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {analysis.ctaPlacement && (
-                                                <p className="text-xs text-slate-500">
-                                                    Placement: {formatLabel(analysis.ctaPlacement)} | Urgency: {formatLabel(analysis.ctaUrgencyLevel || "none")}
-                                                </p>
-                                            )}
-                                            {video.campaignTag && (
-                                                <div className="flex items-center gap-1 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                                                    <Tag className="w-4 h-4 text-violet-600" />
-                                                    <span className="text-sm font-medium text-violet-600">
-                                                        {video.campaignTag}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AnalysisSection>
+                                        <Separator />
 
-                                    {/* Confidence Score */}
-                                    {analysis.analysisConfidenceScore && (
-                                        <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
-                                            <span>Analysis Confidence</span>
-                                            <span className={analysis.analysisConfidenceScore >= 0.75 ? "text-green-600" : "text-amber-600"}>
-                                                {(Number(analysis.analysisConfidenceScore) * 100).toFixed(0)}%
-                                            </span>
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full py-12">
-                                    <Zap className="w-16 h-16 mb-4 text-violet-300" />
-                                    <p className="text-base text-slate-500 mb-4">No analysis available yet</p>
-                                    {onAnalyze && (
-                                        <Button
-                                            onClick={() => onAnalyze(video.id)}
-                                            className="bg-violet-600 hover:bg-violet-700 text-white"
-                                            size="lg"
-                                        >
-                                            <Zap className="w-5 h-5 mr-2" />
-                                            Analyze This Video
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
+                                        {/* CTA & Campaign */}
+                                        <AnalysisSection title="Call-to-Action">
+                                            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-2">
+                                                {analysis.ctaPrimary && (
+                                                    <div>
+                                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                            {formatLabel(analysis.ctaType || "none")}:
+                                                        </span>{" "}
+                                                        <span className="text-sm text-slate-600 dark:text-slate-400">
+                                                            {analysis.ctaPrimary}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {analysis.ctaPlacement && (
+                                                    <p className="text-xs text-slate-500">
+                                                        Placement: {formatLabel(analysis.ctaPlacement)} | Urgency: {formatLabel(analysis.ctaUrgencyLevel || "none")}
+                                                    </p>
+                                                )}
+                                                {video.campaignTag && (
+                                                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                                        <Tag className="w-4 h-4 text-violet-600" />
+                                                        <span className="text-sm font-medium text-violet-600">
+                                                            {video.campaignTag}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </AnalysisSection>
+
+                                        {/* Confidence Score */}
+                                        {analysis.analysisConfidenceScore && (
+                                            <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
+                                                <span>Analysis Confidence</span>
+                                                <span className={analysis.analysisConfidenceScore >= 0.75 ? "text-green-600" : "text-amber-600"}>
+                                                    {(Number(analysis.analysisConfidenceScore) * 100).toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full py-12">
+                                        <Zap className="w-16 h-16 mb-4 text-violet-300" />
+                                        <p className="text-base text-slate-500 mb-4">No analysis available yet</p>
+                                        {onAnalyze && (
+                                            <Button
+                                                onClick={() => onAnalyze(video.id)}
+                                                className="bg-violet-600 hover:bg-violet-700 text-white"
+                                                size="lg"
+                                            >
+                                                <Zap className="w-5 h-5 mr-2" />
+                                                Analyze This Video
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

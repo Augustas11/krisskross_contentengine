@@ -39,6 +39,7 @@ interface VideoAnalysis {
     campaignCategory: string | null;
     analysisConfidenceScore: number | null;
     needsHumanReview: boolean;
+    manualEntryJson: any | null;
 }
 
 interface VideoMetrics {
