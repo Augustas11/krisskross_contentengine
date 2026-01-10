@@ -17,6 +17,14 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { filename, contentType } = body;
 
+        // Check if S3 is configured
+        if (!process.env.S3_ACCESS_KEY_ID || !process.env.S3_SECRET_ACCESS_KEY || !process.env.S3_BUCKET_NAME) {
+            return NextResponse.json(
+                { error: "File upload is not configured. Please use TikTok URL or embed code instead." },
+                { status: 503 }
+            );
+        }
+
         if (!filename || !contentType) {
             return NextResponse.json(
                 { error: "Filename and content type are required" },
