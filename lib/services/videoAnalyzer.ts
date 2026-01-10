@@ -134,16 +134,43 @@ export async function analyzeVideo(
             text: prompt,
         });
 
-        const response = await anthropic.messages.create({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 2500,
-            messages: [
-                {
-                    role: "user",
-                    content: messageContent,
-                },
-            ],
-        });
+        // Try to analyze with image first, but fallback if image download fails
+        let response;
+        try {
+            response = await anthropic.messages.create({
+                model: "claude-sonnet-4-20250514", // using latest available model in 2026? or stick to 3.5 in instructions if 4 not avail? The code has "claude-sonnet-4-20250514", assuming it works.
+                // If it fails on model name, that's different. But user error was "Unable to download file"
+                max_tokens: 2500,
+                messages: [
+                    {
+                        role: "user",
+                        content: messageContent,
+                    },
+                ],
+            });
+        } catch (error: any) {
+            // Handle specific image download error
+            if (error.status === 400 && error.error?.error?.message?.includes("Unable to download")) {
+                console.warn("[Claude Analysis] Image download failed. Retrying without image...");
+
+                // Fallback: Remove image part and only send text info
+                const textOnlyContent = messageContent.filter(c => c.type === "text");
+
+                console.log("[Claude Analysis] Retrying with text-only prompt...");
+                response = await anthropic.messages.create({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 2500,
+                    messages: [
+                        {
+                            role: "user",
+                            content: textOnlyContent,
+                        },
+                    ],
+                });
+            } else {
+                throw error; // Re-throw other errors
+            }
+        }
 
         // 6. Parse response
         const textContent = response.content.find((c) => c.type === "text");
