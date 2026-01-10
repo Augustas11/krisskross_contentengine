@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { videoMetadataSchema } from "@/lib/schemas/video";
 import { z } from "zod";
 import { fetchTikTokOEmbed } from "@/lib/tiktok-oembed";
+import { fetchTikTokVideoById, extractTikTokVideoId } from "@/lib/tiktok";
 
 export async function GET(req: NextRequest) {
     try {
@@ -104,11 +105,41 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User not found in database" }, { status: 404 });
         }
 
-        // Fetch thumbnail from TikTok oEmbed if a TikTok URL is provided
+        // Fetch thumbnail from TikTok
+        // Strategy: Try OAuth API first (if user has TikTok connected), then fallback to oEmbed
         let thumbnailUrl: string | undefined;
+        let tiktokVideoId: string | undefined;
+
         if (parsedData.tiktokUrl) {
-            const oembed = await fetchTikTokOEmbed(parsedData.tiktokUrl);
-            thumbnailUrl = oembed.thumbnailUrl ?? undefined;
+            // Extract video ID from URL
+            tiktokVideoId = extractTikTokVideoId(parsedData.tiktokUrl) ?? undefined;
+
+            // First, try OAuth API if user has TikTok connected
+            const tiktokAccount = await prisma.account.findFirst({
+                where: {
+                    userId: user.id,
+                    provider: "tiktok"
+                }
+            });
+
+            if (tiktokAccount?.access_token && tiktokVideoId) {
+                console.log("[Video Upload] Trying TikTok OAuth API for thumbnail...");
+                const videoData = await fetchTikTokVideoById(tiktokAccount.access_token, tiktokVideoId);
+                if (videoData?.cover_image_url) {
+                    thumbnailUrl = videoData.cover_image_url;
+                    console.log("[Video Upload] Got thumbnail from OAuth API");
+                }
+            }
+
+            // Fallback to oEmbed if OAuth didn't work
+            if (!thumbnailUrl) {
+                console.log("[Video Upload] Trying TikTok oEmbed API for thumbnail...");
+                const oembed = await fetchTikTokOEmbed(parsedData.tiktokUrl);
+                thumbnailUrl = oembed.thumbnailUrl ?? undefined;
+                if (thumbnailUrl) {
+                    console.log("[Video Upload] Got thumbnail from oEmbed API");
+                }
+            }
         }
 
         const video = await prisma.video.create({
@@ -125,6 +156,7 @@ export async function POST(req: NextRequest) {
 
                 // TikTok Link
                 tiktokUrl: parsedData.tiktokUrl,
+                tiktokVideoId: tiktokVideoId,
 
                 // File info
                 filename: parsedData.filename || `tiktok_import_${Date.now()}`,

@@ -62,3 +62,75 @@ export async function fetchTikTokVideos(accessToken: string, cursor: number = 0)
         cursor: json.data.cursor
     };
 }
+
+interface TikTokQueryResponse {
+    data: {
+        videos: TikTokVideoData[];
+    };
+    error: {
+        code: string;
+        message: string;
+        log_id: string;
+    };
+}
+
+/**
+ * Fetch a specific TikTok video by its ID using the authenticated API
+ * Note: Only works for videos owned by the authenticated user
+ */
+export async function fetchTikTokVideoById(accessToken: string, videoId: string): Promise<TikTokVideoData | null> {
+    const fields = [
+        "id", "title", "video_description", "duration", "cover_image_url", "embed_html",
+        "view_count", "share_count", "like_count", "comment_count", "create_time"
+    ].join(",");
+
+    try {
+        const response = await fetch(`${TIKTOK_API_BASE}/video/query/?fields=${fields}`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                filters: {
+                    video_ids: [videoId]
+                }
+            })
+        });
+
+        if (!response.ok) {
+            console.warn(`[TikTok API] Query failed: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        const json: TikTokQueryResponse = await response.json();
+
+        if (json.error.code !== "ok") {
+            console.warn(`[TikTok API] Query error: ${json.error.message} (Code: ${json.error.code})`);
+            return null;
+        }
+
+        const videos = json.data.videos || [];
+        return videos.length > 0 ? videos[0] : null;
+    } catch (error) {
+        console.error("[TikTok API] Error querying video:", error);
+        return null;
+    }
+}
+
+/**
+ * Extract video ID from a TikTok URL
+ * Supports formats like:
+ * - https://www.tiktok.com/@user/video/1234567890
+ * - https://vm.tiktok.com/ZMd3CQdNr/
+ */
+export function extractTikTokVideoId(url: string): string | null {
+    // Standard format: /video/1234567890
+    const standardMatch = url.match(/\/video\/(\d+)/);
+    if (standardMatch) {
+        return standardMatch[1];
+    }
+
+    // Short URL format would require following redirects, return null for now
+    return null;
+}
