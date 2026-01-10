@@ -69,8 +69,8 @@ export function VideoUploadZone() {
     };
 
     async function onSubmit(data: VideoFormValues) {
-        if (!selectedFile && !data.tiktokUrl) {
-            toast.error("Please provide either a video file or a TikTok URL");
+        if (!selectedFile && !data.tiktokUrl && !data.embedCode) {
+            toast.error("Please provide a video file, TikTok URL, or embed code");
             return;
         }
 
