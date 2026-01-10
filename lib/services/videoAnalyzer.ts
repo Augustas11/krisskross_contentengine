@@ -115,17 +115,35 @@ export async function analyzeVideo(
         console.log("=".repeat(80));
 
         // Build message content - include image if thumbnail available
-        const messageContent: Array<{ type: "text"; text: string } | { type: "image"; source: { type: "url"; url: string } }> = [];
+        const messageContent: Array<{ type: "text"; text: string } | { type: "image"; source: { type: "base64"; media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp"; data: string } }> = [];
 
         // Add thumbnail image for vision analysis if available
         if (video.thumbnailUrl) {
-            messageContent.push({
-                type: "image",
-                source: {
-                    type: "url",
-                    url: video.thumbnailUrl,
-                },
-            });
+            try {
+                // Fetch image on server side
+                const imageRes = await fetch(video.thumbnailUrl);
+                if (!imageRes.ok) throw new Error(`Failed to fetch image: ${imageRes.statusText}`);
+
+                // Get buffer and convert to base64
+                const arrayBuffer = await imageRes.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const isPng = video.thumbnailUrl.toLowerCase().endsWith('.png');
+                const mediaType = isPng ? "image/png" : "image/jpeg";
+                const base64Image = buffer.toString('base64');
+
+                messageContent.push({
+                    type: "image",
+                    source: {
+                        type: "base64",
+                        media_type: mediaType,
+                        data: base64Image,
+                    },
+                });
+                console.log("[Claude Analysis] Image converted to base64 successfully");
+            } catch (err) {
+                console.warn("[Claude Analysis] Failed to download/convert image:", err);
+                console.log("Proceeding without image due to fetch error.");
+            }
         }
 
         // Add the text prompt
@@ -134,43 +152,16 @@ export async function analyzeVideo(
             text: prompt,
         });
 
-        // Try to analyze with image first, but fallback if image download fails
-        let response;
-        try {
-            response = await anthropic.messages.create({
-                model: "claude-sonnet-4-20250514", // using latest available model in 2026? or stick to 3.5 in instructions if 4 not avail? The code has "claude-sonnet-4-20250514", assuming it works.
-                // If it fails on model name, that's different. But user error was "Unable to download file"
-                max_tokens: 2500,
-                messages: [
-                    {
-                        role: "user",
-                        content: messageContent,
-                    },
-                ],
-            });
-        } catch (error: any) {
-            // Handle specific image download error
-            if (error.status === 400 && error.error?.error?.message?.includes("Unable to download")) {
-                console.warn("[Claude Analysis] Image download failed. Retrying without image...");
-
-                // Fallback: Remove image part and only send text info
-                const textOnlyContent = messageContent.filter(c => c.type === "text");
-
-                console.log("[Claude Analysis] Retrying with text-only prompt...");
-                response = await anthropic.messages.create({
-                    model: "claude-sonnet-4-20250514",
-                    max_tokens: 2500,
-                    messages: [
-                        {
-                            role: "user",
-                            content: textOnlyContent,
-                        },
-                    ],
-                });
-            } else {
-                throw error; // Re-throw other errors
-            }
-        }
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514", // assuming valid model
+            max_tokens: 2500,
+            messages: [
+                {
+                    role: "user",
+                    content: messageContent as any,
+                },
+            ],
+        });
 
         // 6. Parse response
         const textContent = response.content.find((c) => c.type === "text");
