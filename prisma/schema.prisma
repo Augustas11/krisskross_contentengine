@@ -36,6 +36,7 @@ model Video {
   // TikTok linking
   tiktokUrl     String?  @unique @map("tiktok_url")
   tiktokVideoId String?  @unique @map("tiktok_video_id") @db.VarChar(50)
+  embedCode     String?  @map("embed_code") @db.Text
   
   // Soft delete
   deletedAt   DateTime? @map("deleted_at")

@@ -53,6 +53,7 @@ export interface VideoCardData {
     id: string;
     filename: string;
     thumbnailUrl: string | null;
+    embedCode: string | null;
     hook: string;
     caption: string;
     description: string;

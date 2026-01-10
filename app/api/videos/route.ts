@@ -162,6 +162,7 @@ export async function POST(req: NextRequest) {
                 filename: parsedData.filename || `tiktok_import_${Date.now()}`,
                 fileUrl: parsedData.fileUrl || parsedData.tiktokUrl || "", // Fallback to empty string or handle error if required
                 thumbnailUrl: thumbnailUrl,
+                embedCode: parsedData.embedCode,
 
                 // Relations
                 user: { connect: { id: user.id } }

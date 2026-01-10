@@ -29,4 +29,5 @@ export const videoMetadataSchema = z.object({
         "None"
     ]).optional(),
     campaignTag: z.string().optional(),
+    embedCode: z.string().optional(),
 });

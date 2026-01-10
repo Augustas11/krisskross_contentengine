@@ -212,6 +212,28 @@ export function VideoUploadZone() {
                         )}
                     />
 
+                    <FormField
+                        control={form.control}
+                        name="embedCode"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>TikTok Embed Code</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        placeholder='Paste TikTok embed code here... (e.g., <blockquote class="tiktok-embed" ...)'
+                                        className="resize-none font-mono text-xs h-24"
+                                        {...field}
+                                        disabled={uploading}
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Get embed code from TikTok: Share → Embed → Copy code
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
                     <div className="grid gap-4 md:grid-cols-2">
                         <FormField
                             control={form.control}

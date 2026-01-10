@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VideoCardData } from "./VideoCard";
+import { TikTokEmbed } from "./TikTokEmbed";
 
 interface VideoAnalysisModalProps {
     video: VideoCardData | null;
@@ -79,15 +80,22 @@ export function VideoAnalysisModal({ video, isOpen, onClose, onAnalyze }: VideoA
                         {/* Left: Video & Performance */}
                         <div className="space-y-4">
                             {/* Video Thumbnail/Player */}
-                            <div className="aspect-[9/16] bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
-                                {video.thumbnailUrl ? (
-                                    <img
-                                        src={video.thumbnailUrl}
-                                        alt={video.filename}
-                                        className="w-full h-full object-cover"
+                            <div className="bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+                                {video.embedCode ? (
+                                    <TikTokEmbed
+                                        embedCode={video.embedCode}
+                                        className="w-full"
                                     />
+                                ) : video.thumbnailUrl ? (
+                                    <div className="aspect-[9/16]">
+                                        <img
+                                            src={video.thumbnailUrl}
+                                            alt={video.filename}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                    <div className="aspect-[9/16] w-full flex items-center justify-center text-slate-400">
                                         No Preview Available
                                     </div>
                                 )}

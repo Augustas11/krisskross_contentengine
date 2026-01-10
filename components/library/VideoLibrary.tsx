@@ -140,6 +140,7 @@ export function VideoLibrary() {
         id: v.id,
         filename: v.filename,
         thumbnailUrl: v.thumbnailUrl,
+        embedCode: v.embedCode,
         hook: v.hook,
         caption: v.caption,
         description: v.description,
